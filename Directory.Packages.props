@@ -23,7 +23,7 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="MiniValidation" Version="0.10.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="10.0.0" />
-    <PackageVersion Include="BlazorBlueprint.Components" Version="4.0.1" />
+    <PackageVersion Include="BlazorBlueprint.Components" Version="4.1.0" />
     <!-- Transitive-only pins for security advisories (GHSA-v5pm-xwqc-g5wc, GHSA-g94r-2vxg-569j, GHSA-q939-rpr3-3284) -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.17.0" />
@@ -35,14 +35,14 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.6" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.8" />
     <PackageVersion Include="Semver" Version="3.0.0" />
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.Grafana.Loki" Version="9.0.2" />
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
-    <PackageVersion Include="TUnit" Version="1.68.17" />
+    <PackageVersion Include="TUnit" Version="1.69.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
   </ItemGroup>
