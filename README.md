@@ -157,18 +157,20 @@ directly, so there is no second surface to keep in step. The pages render intera
 Blazor server circuit, and each carries the admin policy as endpoint metadata, so an unauthenticated
 visitor is turned away at the endpoint before any markup is produced.
 
-It is grouped as shared, firmware and desktop:
+The sidebar groups pages by the job rather than by URL:
 
-| Page | Group |
-|------|-------|
-| `/auth/signed-out` | Where signing out lands, anonymous. The only page that renders without a session |
-| `/admin` | Status across both domains |
-| `/admin/repositories` | Publish allowlist, shared by firmware and desktop |
-| `/admin/discord-webhooks` | Notification targets, shared |
-| `/admin/firmware/releases` | Changelog fixes and unpublishing versions |
-| `/admin/firmware/boards`, `/chips`, `/usb-devices`, `/usb-serial-filters`, `/advisories` | The firmware catalog |
-| `/admin/desktop/modules` | Desktop modules, their owners and how many versions each has |
-| `/admin/desktop/modules/{id}` | One module: its metadata, and the versions it advertises |
+| Group | Page | What it is for |
+|-------|------|----------------|
+| | `/admin` | Overview: what needs attention, what each channel serves, what is in flight |
+| Firmware | `/admin/firmware/releases` | Changelog fixes and unpublishing versions |
+| Firmware | `/admin/firmware/advisories` | Warnings on the public manifest |
+| Hardware | `/admin/firmware/boards`, `/chips`, `/usb-devices`, `/usb-serial-filters` | Reference data for the catalog |
+| Desktop | `/admin/desktop/modules` | Desktop modules, their owners and how many versions each has |
+| Desktop | `/admin/desktop/modules/{id}` | One module: its metadata, and the versions it advertises |
+| Administration | `/admin/repositories` | Publish allowlist, shared by firmware and desktop |
+| Administration | `/admin/discord-webhooks` | Notification targets, shared |
+| Administration | `/admin/import` | Seed or update the catalog from one file |
+| | `/auth/signed-out` | Where signing out lands, anonymous. The only page that renders without a session |
 
 If a machine-readable admin surface is needed later, it will be a separate automation API with its own
 tokens, built on the same services.

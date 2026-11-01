@@ -1,0 +1,13 @@
+@*
+    A quiet state for the ordinary case: dot plus label, never colour alone. Badges are for what needs
+    noticing, so a table of healthy rows does not shout on every line.
+*@
+<span class="bb:inline-flex bb:items-center bb:gap-2 bb:whitespace-nowrap">
+    <span class="@(Active ? "bg-success bb:size-2 bb:shrink-0 bb:rounded-full" : "bg-muted-foreground bb:size-2 bb:shrink-0 bb:rounded-full")" aria-hidden="true"></span>
+    <span class="@(Active ? "" : "bb:text-muted-foreground")">@Label</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public required string Label { get; set; }
+    [Parameter] public bool Active { get; set; }
+}

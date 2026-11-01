@@ -6,10 +6,7 @@
 @inherits AdminPageBase
 
 <PageHeader Title="Import">
-    <Subtitle>
-        Seeds or updates the catalog from one file: chips, boards, publishers, USB devices and serial
-        filters, and desktop modules. Nothing is written until the preview is applied.
-    </Subtitle>
+    <Subtitle>Seed or update the catalog from one file. Nothing is written until the preview is applied.</Subtitle>
 </PageHeader>
 
 @*
@@ -17,9 +14,9 @@
     is not a formality: an import that names a chip slightly differently creates a second chip rather
     than editing the first, and the diff is the only place that is visible before it happens.
 *@
-<div class="flex flex-col gap-4">
+<div class="bb:flex bb:w-full bb:flex-col bb:gap-4">
 
-    <BbCard Class="w-full">
+    <BbCard Class="bb:w-full">
         <BbCardHeader>
             <BbCardTitle>File</BbCardTitle>
             <BbCardDescription>
@@ -29,22 +26,22 @@
             </BbCardDescription>
         </BbCardHeader>
         <BbCardContent>
-            <div class="flex flex-col gap-3">
+            <div class="bb:flex bb:flex-col bb:gap-3">
                 @* .jsonc as well as .json: the parser skips comments, and a catalog worth keeping
                    in git tends to want them for the sources behind its USB ids. *@
                 <InputFile OnChange="LoadFileAsync" accept=".json,.jsonc"
-                           class="file:bg-secondary file:text-secondary-foreground hover:file:bg-secondary/80 border-input w-full cursor-pointer rounded-md border text-sm file:mr-4 file:cursor-pointer file:border-0 file:px-4 file:py-2"/>
+                           class="bb:border-input bb:w-full bb:cursor-pointer bb:rounded-md bb:border bb:text-sm bb:file:border-0"/>
 
                 @if (_fileName is not null)
                 {
-                    <p class="text-muted-foreground text-sm">
+                    <p class="bb:text-muted-foreground bb:text-sm">
                         @_fileName, @_itemCount row@(_itemCount == 1 ? "" : "s")
                     </p>
                 }
 
                 @if (_parseError is not null)
                 {
-                    <p class="text-destructive text-sm">@_parseError</p>
+                    <p class="bb:text-destructive bb:text-sm">@_parseError</p>
                 }
             </div>
         </BbCardContent>
@@ -52,8 +49,8 @@
 
     @if (_plan is { } plan)
     {
-        <BbCard Class="w-full overflow-hidden p-0">
-            <BbCardHeader Class="p-6 pb-0">
+        <BbCard Class="bb:w-full bb:overflow-hidden bb:p-0">
+            <BbCardHeader Class="bb:p-6 pb-0">
                 <BbCardTitle>@(_applied ? "Result" : "Preview")</BbCardTitle>
                 <BbCardDescription>
                     @if (_applied)
@@ -75,18 +72,19 @@
                 </BbCardDescription>
             </BbCardHeader>
 
-            <BbCardContent Class="p-6 pt-4">
-                <div class="mb-4 flex flex-wrap gap-2">
-                    <BbBadge Variant="BadgeVariant.Default">@plan.Creates to create</BbBadge>
-                    <BbBadge Variant="BadgeVariant.Secondary">@plan.Updates to update</BbBadge>
+            <BbCardContent Class="bb:p-6 bb:pt-4">
+                <div class="bb:mb-4 bb:flex bb:flex-wrap bb:gap-2">
+                    <BbBadge Variant="BadgeVariant.SoftSuccess">@plan.Creates to create</BbBadge>
+                    <BbBadge Variant="BadgeVariant.SoftInfo">@plan.Updates to update</BbBadge>
                     <BbBadge Variant="BadgeVariant.Outline">@plan.Unchanged unchanged</BbBadge>
                     @if (plan.Blocked > 0)
                     {
-                        <BbBadge Variant="BadgeVariant.Destructive">@plan.Blocked blocked</BbBadge>
+                        <BbBadge Variant="BadgeVariant.SoftDestructive">@plan.Blocked blocked</BbBadge>
                     }
                 </div>
 
-                <BbDataGrid TData="ImportItem" Items="_rows" Striped="true" StickyHeader="true">
+                <TableFrame>
+                <BbDataGrid TData="ImportItem" TableContainerClass="@TableFrame.TableClass" Items="_rows" StickyHeader="true">
                     <Columns>
                         <BbDataGridPropertyColumn TData="ImportItem" TProp="string" Property="i => i.Section" Title="Kind"/>
                         <BbDataGridPropertyColumn TData="ImportItem" TProp="string" Property="i => i.Key" Title="Name"/>
@@ -94,17 +92,18 @@
                             <BbBadge Variant="@BadgeFor(context.Action)">@Label(context.Action)</BbBadge>
                         </BbDataGridTemplateColumn>
                         <BbDataGridTemplateColumn TData="ImportItem" Title="Detail" Sortable="false">
-                            <span class="@(context.Action == ImportAction.Blocked ? "text-destructive" : "text-muted-foreground")">
+                            <span class="@(context.Action == ImportAction.Blocked ? "bb:text-destructive" : "bb:text-muted-foreground")">
                                 @context.Detail
                             </span>
                         </BbDataGridTemplateColumn>
                     </Columns>
                 </BbDataGrid>
+                </TableFrame>
             </BbCardContent>
 
             @if (!_applied)
             {
-                <BbCardFooter Class="flex justify-end gap-2 p-6 pt-0">
+                <BbCardFooter Class="bb:flex bb:justify-end bb:gap-2 bb:p-6 bb:pt-0">
                     <BbButton Variant="ButtonVariant.Outline" OnClick="Reset">Cancel</BbButton>
                     <BbButton OnClick="ApplyAsync" Disabled="@(!plan.CanApply || _applying)">
                         @(_applying ? "Applying..." : "Apply")
@@ -114,7 +113,7 @@
         </BbCard>
     }
 
-    <BbCard Class="w-full">
+    <BbCard Class="bb:w-full">
         <BbCardHeader>
             <BbCardTitle>Format</BbCardTitle>
             <BbCardDescription>
@@ -124,7 +123,7 @@
             </BbCardDescription>
         </BbCardHeader>
         <BbCardContent>
-            <pre class="bg-muted overflow-x-auto rounded-md p-4 text-xs"><code>@ExampleDocument</code></pre>
+            <pre class="bb:bg-muted bb:overflow-x-auto bb:rounded-md bb:p-4 bb:text-xs"><code>@ExampleDocument</code></pre>
         </BbCardContent>
     </BbCard>
 </div>
@@ -265,17 +264,17 @@
 
     private static string Label(ImportAction action) => action switch
     {
-        ImportAction.Create => "create",
-        ImportAction.Update => "update",
-        ImportAction.Unchanged => "unchanged",
-        _ => "blocked"
+        ImportAction.Create => "Create",
+        ImportAction.Update => "Update",
+        ImportAction.Unchanged => "Unchanged",
+        _ => "Blocked"
     };
 
     private static BadgeVariant BadgeFor(ImportAction action) => action switch
     {
-        ImportAction.Create => BadgeVariant.Default,
-        ImportAction.Update => BadgeVariant.Secondary,
+        ImportAction.Create => BadgeVariant.SoftSuccess,
+        ImportAction.Update => BadgeVariant.SoftInfo,
         ImportAction.Unchanged => BadgeVariant.Outline,
-        _ => BadgeVariant.Destructive
+        _ => BadgeVariant.SoftDestructive
     };
 }

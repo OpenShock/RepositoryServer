@@ -1,0 +1,30 @@
+@*
+    Holds a table, and is the one place a failed read is drawn (style guide §5: inline and quiet, with
+    a retry). Without this a read that failed rendered the table's empty state, which claims there are
+    no rows when the truth is that nobody knows.
+
+    The border itself goes on the table, through the grid's TableContainerClass="@TableFrame.TableClass".
+    Blueprint's search and pagination rows have no horizontal padding of their own, so a border around
+    the whole grid leaves them jammed against it; outside the border they line up with the page.
+*@
+@if (Failed)
+{
+    <div class="bb:flex bb:w-full bb:flex-col bb:items-center bb:gap-3 bb:rounded-md bb:border bb:py-12">
+        <p class="bb:text-destructive bb:text-sm">Failed to load this data.</p>
+        <BbButton Variant="ButtonVariant.Outline" OnClick="OnRetry">Try again</BbButton>
+    </div>
+}
+else
+{
+    <div class="bb:w-full bb:min-w-0">
+        @ChildContent
+    </div>
+}
+
+@code {
+    public const string TableClass = "bb:rounded-md bb:border";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Failed { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

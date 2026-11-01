@@ -6,14 +6,16 @@
 *@
 <!DOCTYPE html>
 @*
-    Blazor Blueprint themes off a .dark class rather than a media query, and its colour variables are
-    keyed on data-base-color, so both attributes have to be here or every var() resolves to nothing
-    and the page renders as unstyled black on white.
+    Blueprint's colour variables are keyed on data-base-color, so without it every var() resolves to
+    nothing. The .dark class is the default for a browser with no stored choice, matching the Frontend;
+    the script below settles it before first paint, so choosing light does not flash dark on every load.
 *@
 <html lang="en" class="dark" data-base-color="neutral">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    @* This UI has its own dark theme. Dark Reader repainting it also washes out the status colours. *@
+    <meta name="darkreader-lock"/>
     <title>Repository Server Admin</title>
     @*
         Required by Blazor's link and route resolution, and it anchors every relative URL below.
@@ -21,19 +23,37 @@
         /admin/firmware/boards while working on a one-segment route.
     *@
     <base href="/"/>
-    <link rel="icon" href="data:,"/>
+    @* Not at the root: a one-segment path matches the versioned API route and answers 400. *@
+    <link rel="icon" href="/images/favicon.ico"/>
+    <script>
+        (function () {
+            function apply(scheme) {
+                var dark = scheme === 'dark' || (scheme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', dark);
+                document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+            }
+            function stored() {
+                try { return localStorage.getItem('color-scheme') || 'dark'; } catch { return 'dark'; }
+            }
+            window.setColorScheme = function (scheme) {
+                try { localStorage.setItem('color-scheme', scheme); } catch { }
+                apply(scheme);
+            };
+            matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { apply(stored()); });
+            apply(stored());
+        })();
+    </script>
     @*
-        One prebuilt Tailwind bundle; the component JS modules are pulled in on demand by the
-        components that need them, so there is no script tag for them here.
+        themes.css carries the colour variables, keyed on data-base-color on the html element; the
+        main bundle defines none. Blueprint v4 prefixes its utilities, so classes in .razor files are
+        written bb:flex, and only exist if a Blueprint component happens to use them.
     *@
-    @* themes.css carries the colour variables; the main bundle is utilities only and defines none. *@
     <link href="/_content/BlazorBlueprint.Components/css/themes.css" rel="stylesheet"/>
     <link href="/_content/BlazorBlueprint.Components/blazorblueprint.css" rel="stylesheet"/>
     <link href="/_content/BlazorBlueprint.Primitives/css/primitives.css" rel="stylesheet"/>
     @*
-        Style guide §1.1 and §1.2. Inline rather than a wwwroot file because we consume a prebuilt
-        Tailwind bundle: there is no @@theme / @@apply to compile against, and the app has no static
-        web root of its own. Last in the head so it wins over the bundle.
+        Style guide §1.1 and §1.2. Inline because there is no CSS build: this is everything the bundle
+        does not provide. Last in the head so it wins over the bundle.
     *@
     <style>
         /*
@@ -48,51 +68,99 @@
             --radius-xl: calc(var(--radius) + 4px);
         }
 
-        /*
-            The universal border colour is load-bearing: components write `border` / `border-b` /
-            `divide-y` with no colour class and expect the theme border. Without it they fall back
-            to currentColor.
-        */
-        * { border-color: var(--border); }
-
-        body { background-color: var(--background); color: var(--foreground); }
-
-        /* Tailwind v4 stopped shipping this on buttons. */
-        button:not([disabled]), [role='button']:not([disabled]) { cursor: pointer; }
+        /* The Frontend's raised surfaces in dark mode: Blueprint's neutral draws them flat. */
+        [data-base-color="neutral"].dark {
+            --card: oklch(0.205 0 0);
+            --popover: oklch(0.205 0 0);
+            --sidebar: oklch(0.205 0 0);
+        }
 
         /*
-            Blazor Blueprint ships a Tailwind bundle built from ITS OWN components, so it contains
-            only the utilities those components use. Any class we write that Blueprint happens not to
-            use is simply absent, and silently does nothing — which is what stacked the status cards
-            into one column instead of three.
-
-            These are the utilities this app uses that the bundle does not define, with Tailwind's own
-            values. Breakpoints are Tailwind v4 defaults: sm 40rem, lg 64rem. Adding a class to a page
-            that is not here or in the bundle will do nothing, so check before reaching for one.
+            Layered, because an unlayered rule would outrank every bb:border-* utility. Load-bearing:
+            components write bb:border / bb:divide-y with no colour and expect the theme border.
         */
-        .flex-none  { flex: none; }
-        .gap-x-2    { column-gap: .5rem; }
-        .gap-y-1    { row-gap: .25rem; }
-        .max-w-3xl  { max-width: 48rem; }
-        .mt-8       { margin-top: 2rem; }
-        .size-9     { width: 2.25rem; height: 2.25rem; }
-        .size-16    { width: 4rem; height: 4rem; }
+        @@layer base {
+            *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: var(--border); }
+            body { background-color: var(--background); color: var(--foreground); }
+            button:not([disabled]), [role='button']:not([disabled]) { cursor: pointer; }
+            code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.875em; }
+            input[type='file']::file-selector-button {
+                margin-right: 1rem;
+                padding: 0.5rem 1rem;
+                border: 0;
+                background-color: var(--secondary);
+                color: var(--secondary-foreground);
+                cursor: pointer;
+            }
+        }
+
+        /*
+            The bundle holds only the utilities Blueprint's own components use, and any other class
+            silently does nothing. These are the ones this app uses that it lacks, under their plain
+            Tailwind names and values, so check here or in the bundle before reaching for a new one.
+            Status colours borrow Blueprint's alert variables, which it defines for both themes.
+        */
+        .text-success { color: var(--alert-success); }
+        .text-warning { color: var(--alert-warning); }
+        .text-info { color: var(--alert-info); }
+        .bg-success { background-color: var(--alert-success); }
+        .bg-muted-foreground { background-color: var(--muted-foreground); }
+        .dark .dark\:hidden { display: none; }
+        .dark .dark\:block { display: block; }
+
+        .container { width: 100%; }
+        .basis-64 { flex-basis: 16rem; }
+        .flex-none { flex: none; }
+        .font-bold { font-weight: 700; }
+        .gap-x-4 { column-gap: 1rem; }
+        .gap-x-8 { column-gap: 2rem; }
+        .gap-y-1 { row-gap: .25rem; }
+        .gap-y-2 { row-gap: .5rem; }
+        .gap-y-3 { row-gap: .75rem; }
+        .h-64 { height: 16rem; }
+        .h-screen { height: 100vh; }
+        .max-w-prose { max-width: 65ch; }
+        .min-h-64 { min-height: 16rem; }
+        .ml-2 { margin-left: .5rem; }
+        .ml-auto { margin-left: auto; }
+        .mr-2 { margin-right: .5rem; }
+        .pb-0 { padding-bottom: 0; }
+        .pb-6 { padding-bottom: 1.5rem; }
+        .size-3 { width: .75rem; height: .75rem; }
+        .size-5 { width: 1.25rem; height: 1.25rem; }
+        .size-16 { width: 4rem; height: 4rem; }
 
         @@media (min-width: 40rem) {
-            .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-            .sm\:gap-8       { gap: 2rem; }
-            .sm\:px-12       { padding-inline: 3rem; }
-            .sm\:pt-12       { padding-top: 3rem; }
-            .sm\:pb-2        { padding-bottom: .5rem; }
-            .sm\:size-10     { width: 2.5rem; height: 2.5rem; }
-            .sm\:size-20     { width: 5rem; height: 5rem; }
-            .sm\:text-lg     { font-size: 1.125rem; line-height: 1.75rem; }
-            .sm\:text-2xl    { font-size: 1.5rem; line-height: 2rem; }
+            .container { max-width: 40rem; }
+            .sm\:gap-8 { gap: 2rem; }
+            .sm\:gap-y-3 { row-gap: .75rem; }
+            .sm\:grid-cols-\[10rem_minmax\(0\,1fr\)\] { grid-template-columns: 10rem minmax(0, 1fr); }
+            .sm\:inline { display: inline; }
+            .sm\:max-w-lg { max-width: 32rem; }
+            .sm\:max-w-2xl { max-width: 42rem; }
+            .sm\:mb-0 { margin-bottom: 0; }
+            .sm\:pb-8 { padding-bottom: 2rem; }
+            .sm\:pt-12 { padding-top: 3rem; }
+            .sm\:px-12 { padding-inline: 3rem; }
+            .sm\:size-10 { width: 2.5rem; height: 2.5rem; }
+            .sm\:size-20 { width: 5rem; height: 5rem; }
+            .sm\:text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+            .sm\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+        }
+
+        @@media (min-width: 48rem) {
+            .container { max-width: 48rem; }
+            .md\:table-cell { display: table-cell; }
         }
 
         @@media (min-width: 64rem) {
+            .container { max-width: 64rem; }
+            .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .lg\:inline-block { display: inline-block; }
         }
+
+        @@media (min-width: 80rem) { .container { max-width: 80rem; } }
+        @@media (min-width: 96rem) { .container { max-width: 96rem; } }
     </style>
     @*
         Must match Routes below. Left prerendering on here while Routes had it off, the head was

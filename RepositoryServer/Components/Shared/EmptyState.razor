@@ -1,0 +1,30 @@
+@*
+    Empty state, style guide §4.2. Default is the large centred block with the medallion; Compact is
+    for a panel that is only one part of a page, where a large medallion would outweigh the content.
+*@
+<div class="@(Compact ? "bb:flex bb:w-full bb:flex-col bb:items-center bb:justify-center bb:gap-3 bb:px-4 bb:py-8 bb:text-center" : "bb:flex bb:w-full bb:flex-col bb:items-center bb:justify-center bb:gap-6 bb:px-4 bb:py-12 bb:text-center sm:gap-8")">
+    <div class="bb:flex bb:flex-col bb:items-center bb:gap-3">
+        <div class="@(Compact ? "bb:bg-muted bb:text-muted-foreground bb:flex bb:size-10 bb:items-center bb:justify-center bb:rounded-lg" : "bb:bg-muted bb:text-muted-foreground bb:flex size-16 bb:items-center bb:justify-center bb:rounded-2xl sm:size-20")">
+            <Glyph Name="Icon" Class="@(Compact ? "size-5" : "bb:size-8 sm:size-10")"/>
+        </div>
+        <h3 class="@(Compact ? "bb:text-sm bb:font-medium" : "bb:text-xl bb:font-medium sm:text-2xl")">@Title</h3>
+        @if (Description is not null)
+        {
+            <p class="@(Compact ? "bb:text-muted-foreground max-w-prose bb:text-sm" : "bb:text-muted-foreground max-w-prose bb:text-base sm:text-lg")">@Description</p>
+        }
+    </div>
+    @if (ChildContent is not null)
+    {
+        <div>@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required IconName Icon { get; set; }
+    [Parameter, EditorRequired] public required string Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public bool Compact { get; set; }
+
+    /// <summary>Optional action below the text.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

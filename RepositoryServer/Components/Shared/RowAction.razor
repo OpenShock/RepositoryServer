@@ -1,0 +1,16 @@
+@* One entry in a RowActions menu. Destructive entries take the token and a separator above them. *@
+@if (Destructive)
+{
+    <BbDropdownMenuSeparator/>
+}
+<BbDropdownMenuItem Class="@(Destructive ? "bb:text-destructive bb:flex bb:cursor-pointer bb:items-center bb:gap-2" : "bb:flex bb:cursor-pointer bb:items-center bb:gap-2")" OnClick="OnClick">
+    <Glyph Name="Icon"/>
+    @Label
+</BbDropdownMenuItem>
+
+@code {
+    [Parameter, EditorRequired] public required string Label { get; set; }
+    [Parameter, EditorRequired] public required IconName Icon { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public bool Destructive { get; set; }
+}

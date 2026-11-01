@@ -3,80 +3,73 @@
 @using OpenShock.RepositoryServer.RepoServerDb.Models
 @inherits AdminDataPageBase
 
-<PageHeader Title="Desktop modules">
-    <Subtitle>
-        Modules served by the desktop repository index. The owning repository is the authorization
-        decision for publishing: a module with no owner is closed to every publisher rather than open to
-        any, which is the right state for one not yet wired to its CI. Open a module to manage the
-        versions it advertises.
-    </Subtitle>
+<PageHeader Title="Modules">
+    <Subtitle>Modules in the desktop repository index. Open one to manage its versions.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add module</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add module</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-    <BbDataGrid TData="Module" Items="_modules" IsLoading="Loading" Striped="true" StickyHeader="true">
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="Module" TableContainerClass="@TableFrame.TableClass" Items="_modules" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search modules">
         <EmptyTemplate>
-            <div class="flex flex-col items-center gap-3 py-12 text-center">
-                <p class="text-muted-foreground">No modules.</p>
-                <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Add the first module</BbButton>
-            </div>
+            <EmptyState Icon="IconName.Puzzle" Title="No modules" Description="The desktop index is empty.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first module</BbButton>
+            </EmptyState>
         </EmptyTemplate>
         <Columns>
-            <BbDataGridPropertyColumn TData="Module" TProp="string" Property="m => m.Id" Title="Id">
+            <BbDataGridPropertyColumn TData="Module" TProp="string" Property="m => m.Name" Title="Module">
                 <CellTemplate>
-                    @* The id is the link rather than a separate action: it is what identifies the row. *@
-                    <a href="@ModuleHref(context)" class="underline"><code>@context.Id</code></a>
+                    @* The name is the link rather than a separate action: it is what identifies the row. *@
+                    <a href="@ModuleHref(context)" class="bb:flex bb:min-w-0 bb:flex-col">
+                        <span class="bb:truncate bb:font-medium bb:hover:underline">@context.Name</span>
+                        <code class="bb:text-muted-foreground bb:truncate bb:text-xs">@context.Id</code>
+                    </a>
                 </CellTemplate>
             </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="Module" TProp="string" Property="m => m.Name" Title="Name"/>
             <BbDataGridTemplateColumn TData="Module" Title="Owner" Sortable="false">
                 @if (OwnerName(context.RepositoryId) is { } owner)
                 {
-                    <span class="text-muted-foreground">@owner</span>
+                    <code class="bb:text-muted-foreground">@owner</code>
                 }
                 else
                 {
-                    <BbBadge Variant="BadgeVariant.Destructive">unassigned</BbBadge>
+                    @* Closed to every publisher rather than open to any, but nothing can publish here. *@
+                    <BbBadge Variant="BadgeVariant.SoftWarning">No owner</BbBadge>
                 }
             </BbDataGridTemplateColumn>
-            <BbDataGridTemplateColumn TData="Module" Title="Versions" Sortable="false">
-                @if (context.Versions.Count == 0)
+            <BbDataGridTemplateColumn TData="Module" Title="Latest" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                @if (ModuleVersions.Latest(context.Versions) is { } latest)
                 {
-                    <span class="text-muted-foreground">none published</span>
+                    <code>@latest</code>
                 }
                 else
                 {
-                    <span class="text-muted-foreground">@context.Versions.Count</span>
-                    @if (ModuleVersions.Latest(context.Versions) is { } latest)
-                    {
-                        <span class="text-muted-foreground">, latest <code>@latest</code></span>
-                    }
+                    <span class="bb:text-muted-foreground">None published</span>
                 }
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="Module" Title="Versions" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <span class="bb:text-muted-foreground bb:tabular-nums">@context.Versions.Count</span>
             </BbDataGridTemplateColumn>
             <BbDataGridTemplateColumn TData="Module" Title="" Sortable="false" Width="0">
-                <div class="flex justify-end gap-1">
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
-                              Href="@ModuleHref(context)" AriaLabel="Versions" title="Versions">
-                        <Glyph Name="IconName.Package"/>
-                    </BbButton>
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                </div>
+                <RowActions>
+                    <RowAction Label="Versions" Icon="IconName.Package" OnClick="() => Navigation.NavigateTo(ModuleHref(context))"/>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
             </BbDataGridTemplateColumn>
         </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <ModuleFormDialog @bind-Open="_formOpen" Model="_form" Repositories="_repositories"
                   IdLocked="_editing" OnSave="SaveAsync"/>
 
 @code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
     private Module[] _modules = [];
     private SourceRepository[] _repositories = [];
 

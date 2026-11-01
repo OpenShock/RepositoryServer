@@ -5,68 +5,58 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Publishers">
-    <Subtitle>
-        Repositories allowed to publish through CI. Validating a GitHub OIDC token proves a workflow ran
-        somewhere on GitHub, not that it ran somewhere we trust, so registration here is the authorization
-        decision. Scopes decide what a repository may publish; one with no scopes can publish nothing.
-    </Subtitle>
+    <Subtitle>Repositories allowed to publish through CI. Registration here is the authorization decision.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Register publisher</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Register publisher</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-        <BbDataGrid TData="SourceRepository" Items="_repositories" IsLoading="Loading" Striped="true"
-                    StickyHeader="true">
-            <EmptyTemplate>
-                <BbAlert Variant="AlertVariant.Warning" Class="m-2">
-                    No registered publishers. CI cannot publish anything.
-                </BbAlert>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="SourceRepository" TProp="string" Property="r => r.Owner"
-                                          Title="Repository">
-                    <CellTemplate>
-                        <code>@context.Owner/@context.Repo</code>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridPropertyColumn TData="SourceRepository" TProp="RepositoryProvider"
-                                          Property="r => r.Provider" Title="Provider">
-                    <CellTemplate>
-                        @context.Provider.ToString().ToLowerInvariant()
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="SourceRepository" Title="Scopes" Sortable="false">
-                    @if (context.Scopes.Length == 0)
-                    {
-                        <BbBadge Variant="BadgeVariant.Destructive">none, cannot publish</BbBadge>
-                    }
-                    else
-                    {
-                        <div class="flex flex-wrap gap-1">
-                            @foreach (var scope in context.Scopes)
-                            {
-                                <BbBadge Variant="BadgeVariant.Outline">@scope.ToScopeClaim()</BbBadge>
-                            }
-                        </div>
-                    }
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="SourceRepository" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Revoke" title="Revoke">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="SourceRepository" TableContainerClass="@TableFrame.TableClass" Items="_repositories" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search publishers">
+        <EmptyTemplate>
+            <EmptyState Icon="IconName.KeyRound" Title="No publishers" Description="CI cannot publish anything until a repository is registered.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Register the first publisher</BbButton>
+            </EmptyState>
+        </EmptyTemplate>
+        <Columns>
+            <BbDataGridPropertyColumn TData="SourceRepository" TProp="string" Property="r => r.Owner" Title="Repository">
+                <CellTemplate>
+                    <code>@context.Owner/@context.Repo</code>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridPropertyColumn TData="SourceRepository" TProp="RepositoryProvider"
+                                      Property="r => r.Provider" Title="Provider" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <CellTemplate>@AdminFormat.Label(context.Provider)</CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridTemplateColumn TData="SourceRepository" Title="Scopes" Sortable="false">
+                @if (context.Scopes.Length == 0)
+                {
+                    <BbBadge Variant="BadgeVariant.SoftWarning">No scopes, cannot publish</BbBadge>
+                }
+                else
+                {
+                    <div class="bb:flex bb:flex-wrap bb:gap-1">
+                        @foreach (var scope in context.Scopes)
+                        {
+                            <BbBadge Variant="BadgeVariant.Outline">@scope.ToScopeClaim()</BbBadge>
+                        }
                     </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
+                }
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="SourceRepository" Title="" Sortable="false" Width="0">
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Revoke" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
+            </BbDataGridTemplateColumn>
+        </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>Register or update a publisher</BbDialogTitle>
             <BbDialogDescription>
@@ -75,8 +65,8 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Provider</BbLabel>
                 <BbSelect TValue="RepositoryProvider" @bind-Value="_provider">
                     <BbSelectTrigger TValue="RepositoryProvider">
@@ -92,16 +82,16 @@
                 </BbSelect>
             </div>
             <BbTabs @bind-Value="_entryMode">
-                <BbTabsList Class="w-full">
+                <BbTabsList Class="bb:w-full">
                     <BbTabsTrigger Value="@BrowseTab">Browse @(_provider.ToString().ToLowerInvariant())</BbTabsTrigger>
                     <BbTabsTrigger Value="@ManualTab">Enter manually</BbTabsTrigger>
                 </BbTabsList>
 
-                <BbTabsContent Value="@BrowseTab" Class="flex flex-col gap-4 pt-4">
-                    <div class="flex flex-col gap-2">
+                <BbTabsContent Value="@BrowseTab" Class="bb:flex bb:flex-col bb:gap-4 bb:pt-4">
+                    <div class="bb:flex bb:flex-col bb:gap-2">
                         <BbLabel For="browse-owner">User or organization</BbLabel>
-                        <div class="flex items-center gap-2">
-                            <BbInput Id="browse-owner" Class="flex-1" Placeholder="OpenShock"
+                        <div class="bb:flex bb:items-center bb:gap-2">
+                            <BbInput Id="browse-owner" Class="bb:flex-1" Placeholder="OpenShock"
                                      @bind-Value="_owner" @bind-Value:after="LoadRepositoriesAsync"/>
                             <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
                                       OnClick="LoadRepositoriesAsync" Disabled="_repositoriesLoading"
@@ -117,7 +107,7 @@
                             </BbButton>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="bb:flex bb:flex-col bb:gap-2">
                         <BbLabel>Repository</BbLabel>
                         <BbCombobox TValue="string" Options="RepositoryOptions" Value="@_repo"
                                     ValueChanged="SelectRepositoryAsync" MatchTriggerWidth="true"
@@ -125,36 +115,36 @@
                                     Placeholder="select a repository"
                                     SearchPlaceholder="filter repositories"
                                     EmptyMessage="@RepositoryEmptyMessage"/>
-                        <p class="text-muted-foreground text-xs">
+                        <p class="bb:text-muted-foreground bb:text-xs">
                             Public repositories only. GitHub is asked without a credential, so a private
                             repository never appears here and has to be entered by hand.
                         </p>
                     </div>
                 </BbTabsContent>
 
-                <BbTabsContent Value="@ManualTab" Class="flex flex-col gap-4 pt-4">
-                    <div class="flex flex-col gap-2">
+                <BbTabsContent Value="@ManualTab" Class="bb:flex bb:flex-col bb:gap-4 bb:pt-4">
+                    <div class="bb:flex bb:flex-col bb:gap-2">
                         <BbLabel For="owner">Owner</BbLabel>
                         <BbInput Id="owner" @bind-Value="_owner" Placeholder="OpenShock"/>
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="bb:flex bb:flex-col bb:gap-2">
                         <BbLabel For="repo">Repository</BbLabel>
                         <BbInput Id="repo" @bind-Value="_repo" Placeholder="firmware"/>
                     </div>
                 </BbTabsContent>
             </BbTabs>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Scopes</BbLabel>
                 @foreach (var scope in Scopes)
                 {
                     var current = scope;
-                    <div class="flex items-center gap-2">
+                    <div class="bb:flex bb:items-center bb:gap-2">
                         <BbCheckbox Id="@($"scope-{current}")" Checked="_scopes.Contains(current)"
                                     CheckedChanged="@(checkedNow => ToggleScope(current, checkedNow))"/>
                         <BbLabel For="@($"scope-{current}")">@current.ToScopeClaim()</BbLabel>
                     </div>
                 }
-                <p class="text-muted-foreground text-xs">A publisher with no scopes can publish nothing.</p>
+                <p class="bb:text-muted-foreground bb:text-xs">A publisher with no scopes can publish nothing.</p>
             </div>
         </div>
 

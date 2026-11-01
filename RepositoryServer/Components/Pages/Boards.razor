@@ -4,84 +4,73 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Boards">
-    <Subtitle>
-        A board's name is what a hub reports as its own, compiled in as <code>OPENSHOCK_FW_BOARD</code>, so
-        it has to match the <code>[env:...]</code> name in the firmware repository exactly. It is also the
-        board's segment in artifact URLs, so only URL-safe characters are accepted.
-    </Subtitle>
+    <Subtitle>Hardware that firmware is built for. Names must match the firmware repository exactly.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add board</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add board</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-        <BbDataGrid TData="FirmwareBoard" Items="_boards" IsLoading="Loading" Striped="true"
-                    StickyHeader="true">
-            <EmptyTemplate>
-                <BbAlert Variant="AlertVariant.Warning" Class="m-2">
-                    No boards. Release init rejects a board it does not know, so CI cannot publish yet.
-                </BbAlert>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="string" Property="b => b.Name"
-                                          Id="board-name" Title="Name">
-                    <CellTemplate>
-                        <code>@context.Name</code>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="string"
-                                          Property="b => b.ChipNavigation.Name" Id="chip-name" Title="Chip"/>
-                <BbDataGridTemplateColumn TData="FirmwareBoard" Title="Required artifacts" Sortable="false">
-                    @if (context.RequiredArtifactTypes.Length == 0)
-                    {
-                        <span class="text-sm text-muted-foreground">none</span>
-                    }
-                    else
-                    {
-                        <div class="flex flex-wrap gap-1">
-                            @foreach (var artifactType in context.RequiredArtifactTypes)
-                            {
-                                <BbBadge Variant="BadgeVariant.Outline">
-                                    @artifactType.ToString().ToLowerInvariant()
-                                </BbBadge>
-                            }
-                        </div>
-                    }
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="FirmwareBoard" Title="USB devices" Sortable="false">
-                    <span class="text-muted-foreground">@AttachedDeviceNames(context.Id)</span>
-                </BbDataGridTemplateColumn>
-                <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="bool" Property="b => b.Discontinued"
-                                          Title="Status">
-                    <CellTemplate>
-                        <BbBadge Variant="@(context.Discontinued ? BadgeVariant.Secondary : BadgeVariant.Default)">
-                            @(context.Discontinued ? "discontinued" : "active")
-                        </BbBadge>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="FirmwareBoard" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenAttach(context)" AriaLabel="USB devices" title="USB devices">
-                        <Glyph Name="IconName.Usb"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
-                                  OnClick="() => SetDiscontinuedAsync(context)">
-                            @(context.Discontinued ? "Reinstate" : "Discontinue")
-                        </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="FirmwareBoard" TableContainerClass="@TableFrame.TableClass" Items="_boards" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search boards">
+        <EmptyTemplate>
+            <EmptyState Icon="IconName.Board" Title="No boards"
+                        Description="Release init rejects a board it does not know, so CI cannot publish yet.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first board</BbButton>
+            </EmptyState>
+        </EmptyTemplate>
+        <Columns>
+            <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="string" Property="b => b.Name"
+                                      Id="board-name" Title="Name">
+                <CellTemplate>
+                    <code>@context.Name</code>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="string"
+                                      Property="b => b.ChipNavigation.Name" Id="chip-name" Title="Chip"/>
+            <BbDataGridTemplateColumn TData="FirmwareBoard" Title="Required artifacts" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                @if (context.RequiredArtifactTypes.Length == 0)
+                {
+                    <span class="bb:text-muted-foreground">None</span>
+                }
+                else
+                {
+                    <div class="bb:flex bb:flex-wrap bb:gap-1">
+                        @foreach (var artifactType in context.RequiredArtifactTypes)
+                        {
+                            <BbBadge Variant="BadgeVariant.Outline">
+                                @artifactType.ToString().ToLowerInvariant()
+                            </BbBadge>
+                        }
                     </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
+                }
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="FirmwareBoard" Title="USB devices" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <span class="bb:text-muted-foreground">@AttachedDeviceNames(context.Id)</span>
+            </BbDataGridTemplateColumn>
+            <BbDataGridPropertyColumn TData="FirmwareBoard" TProp="bool" Property="b => b.Discontinued"
+                                      Title="Status" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <CellTemplate>
+                    <StatusDot Active="!context.Discontinued" Label="@(context.Discontinued ? "Discontinued" : "Active")"/>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridTemplateColumn TData="FirmwareBoard" Title="" Sortable="false" Width="0">
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="USB devices" Icon="IconName.Usb" OnClick="() => OpenAttach(context)"/>
+                    <RowAction Label="@(context.Discontinued ? "Reinstate" : "Discontinue")"
+                               Icon="@(context.Discontinued ? IconName.Restore : IconName.Archive)"
+                               OnClick="() => SetDiscontinuedAsync(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
+            </BbDataGridTemplateColumn>
+        </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>@(_editingBoardId is null ? "Add a board" : $"Edit {_name}")</BbDialogTitle>
             <BbDialogDescription>
@@ -90,12 +79,12 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="board-name">Name</BbLabel>
                 <BbInput Id="board-name" @bind-Value="_name" Placeholder="Wemos-D1-Mini-ESP32"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Chip</BbLabel>
                 <BbSelect TValue="Guid?" @bind-Value="_chipId">
                     <BbSelectTrigger TValue="Guid?">
@@ -109,15 +98,15 @@
                     </BbSelectContent>
                 </BbSelect>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Required artifacts</BbLabel>
-                <p class="text-muted-foreground text-xs">
+                <p class="bb:text-muted-foreground bb:text-xs">
                     What an OTA update must supply. Publish refuses a board missing any of these.
                 </p>
                 @foreach (var artifactType in ArtifactTypes)
                 {
                     var current = artifactType;
-                    <div class="flex items-center gap-2">
+                    <div class="bb:flex bb:items-center bb:gap-2">
                         <BbCheckbox Id="@($"artifact-{current}")"
                                     Checked="_requiredArtifactTypes.Contains(current)"
                                     CheckedChanged="@(checkedNow => ToggleArtifactType(current, checkedNow))"/>
@@ -137,7 +126,7 @@
 </BbDialog>
 
 <BbDialog @bind-Open="_attachOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>USB devices for @_attachBoardName</BbDialogTitle>
             <BbDialogDescription>
@@ -145,14 +134,14 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Currently attached</BbLabel>
-                <p class="text-muted-foreground text-sm">
-                    @(_attachBoardId is { } id ? AttachedDeviceNames(id) : "none")
+                <p class="bb:text-muted-foreground bb:text-sm">
+                    @(_attachBoardId is { } id ? AttachedDeviceNames(id) : "None")
                 </p>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Device</BbLabel>
                 <BbSelect TValue="Guid?" @bind-Value="_attachDeviceId">
                     <BbSelectTrigger TValue="Guid?">
@@ -214,7 +203,7 @@
             .Where(n => n is not null)
             .ToArray();
 
-        return names.Length == 0 ? "none" : string.Join(", ", names);
+        return names.Length == 0 ? "None" : string.Join(", ", names);
     }
 
     private void ToggleArtifactType(FirmwareArtifactType artifactType, bool selected)

@@ -3,59 +3,53 @@
 @using OpenShock.RepositoryServer.RepoServerDb.Models
 @inherits AdminDataPageBase
 
-<PageHeader Title="USB serial filters">
-    <Subtitle>
-        WebSerial port picker rules. Leaving the PID empty matches an entire vendor, and there can only be
-        one vendor-wide row per VID.
-    </Subtitle>
+<PageHeader Title="Serial filters">
+    <Subtitle>Which devices the WebSerial port picker offers. An empty PID matches the whole vendor.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add filter</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add filter</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-        <BbDataGrid TData="UsbSerialFilter" Items="_filters" IsLoading="Loading" Striped="true"
-                    StickyHeader="true">
-            <EmptyTemplate>
-                <div class="flex flex-col items-center gap-3 py-12 text-center">
-                    <p class="text-muted-foreground">No filters yet.</p>
-                    <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Add the first filter</BbButton>
-                </div>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="UsbSerialFilter" TProp="int" Property="f => f.Vid" Title="VID">
-                    <CellTemplate>
-                        <code>@UsbIdentifier.Format(context.Vid)</code>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="UsbSerialFilter" Title="PID">
-                    @if (context.Pid is { } pid)
-                    {
-                        <code>@UsbIdentifier.Format(pid)</code>
-                    }
-                    else
-                    {
-                        <BbBadge Variant="BadgeVariant.Secondary">any</BbBadge>
-                    }
-                </BbDataGridTemplateColumn>
-                <BbDataGridPropertyColumn TData="UsbSerialFilter" TProp="string" Property="f => f.Description"
-                                          Title="Description"/>
-                <BbDataGridTemplateColumn TData="UsbSerialFilter" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                    </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="UsbSerialFilter" TableContainerClass="@TableFrame.TableClass" Items="_filters" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search filters">
+        <EmptyTemplate>
+            <EmptyState Icon="IconName.Filter" Title="No filters"
+                        Description="Without these the port picker has nothing to narrow its list by.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first filter</BbButton>
+            </EmptyState>
+        </EmptyTemplate>
+        <Columns>
+            <BbDataGridPropertyColumn TData="UsbSerialFilter" TProp="string" Property="f => f.Description"
+                                      Title="Description"/>
+            <BbDataGridPropertyColumn TData="UsbSerialFilter" TProp="int" Property="f => f.Vid" Title="VID">
+                <CellTemplate>
+                    <code>@UsbIdentifier.Format(context.Vid)</code>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridTemplateColumn TData="UsbSerialFilter" Title="PID">
+                @if (context.Pid is { } pid)
+                {
+                    <code>@UsbIdentifier.Format(pid)</code>
+                }
+                else
+                {
+                    <span class="bb:text-muted-foreground">Any</span>
+                }
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="UsbSerialFilter" Title="" Sortable="false" Width="0">
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
+            </BbDataGridTemplateColumn>
+        </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>@(_editing ? "Edit filter" : "Add a filter")</BbDialogTitle>
             <BbDialogDescription>
@@ -64,17 +58,17 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="vid">VID</BbLabel>
                 <BbInput Id="vid" @bind-Value="_vid" Placeholder="0x1A86"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="pid">PID</BbLabel>
                 <BbInput Id="pid" @bind-Value="_pid" Placeholder="0x7522"/>
-                <p class="text-muted-foreground text-xs">Empty matches the whole vendor.</p>
+                <p class="bb:text-muted-foreground bb:text-xs">Empty matches the whole vendor.</p>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="description">Description</BbLabel>
                 <BbInput Id="description" @bind-Value="_description" Placeholder="QinHeng CH340"/>
             </div>

@@ -4,60 +4,54 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Advisories">
-    <Subtitle>
-        Warnings served on the public firmware manifest, so the flashtool and hubs can tell users about a
-        bad version. Affected versions is a semver range, e.g. <code>&lt;1.4.0</code>.
-    </Subtitle>
+    <Subtitle>Warnings on the public manifest, shown by the flashtool and hubs.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add advisory</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add advisory</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-        <BbDataGrid TData="FirmwareAdvisory" Items="_advisories" IsLoading="Loading" Striped="true"
-                    StickyHeader="true">
-            <EmptyTemplate>
-                <div class="flex flex-col items-center gap-3 py-12 text-center">
-                    <p class="text-muted-foreground">No advisories.</p>
-                    <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Publish an advisory</BbButton>
-                </div>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="AdvisorySeverity"
-                                          Property="a => a.Severity" Title="Severity">
-                    <CellTemplate>
-                        <BbBadge Variant="@SeverityVariant(context.Severity)">
-                            @context.Severity.ToString().ToLowerInvariant()
-                        </BbBadge>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="string" Property="a => a.Title"
-                                          Title="Title"/>
-                <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="string"
-                                          Property="a => a.AffectedVersions" Title="Affects">
-                    <CellTemplate>
-                        <code>@context.AffectedVersions</code>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="FirmwareAdvisory" Title="Link" Sortable="false">
-                    @if (context.Url is { } url)
-                    {
-                        <a href="@url" target="_blank" class="text-sm underline">open</a>
-                    }
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="FirmwareAdvisory" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                    </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="FirmwareAdvisory" TableContainerClass="@TableFrame.TableClass" Items="_advisories" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search advisories">
+        <EmptyTemplate>
+            <EmptyState Icon="IconName.Shield" Title="No advisories"
+                        Description="Nothing is being flagged to users about any firmware version.">
+                <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Publish an advisory</BbButton>
+            </EmptyState>
+        </EmptyTemplate>
+        <Columns>
+            <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="AdvisorySeverity"
+                                      Property="a => a.Severity" Title="Severity">
+                <CellTemplate>
+                    <BbBadge Variant="@SeverityVariant(context.Severity)">@AdminFormat.Label(context.Severity)</BbBadge>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="string" Property="a => a.Title" Title="Title"/>
+            <BbDataGridPropertyColumn TData="FirmwareAdvisory" TProp="string"
+                                      Property="a => a.AffectedVersions" Title="Affects" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <CellTemplate>
+                    <code>@context.AffectedVersions</code>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridTemplateColumn TData="FirmwareAdvisory" Title="Link" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                @if (context.Url is { } url)
+                {
+                    <a href="@url" target="_blank" rel="noreferrer" class="bb:inline-flex bb:items-center bb:gap-1 bb:text-sm bb:underline">
+                        Open
+                        <Glyph Name="IconName.ExternalLink" Class="size-3"/>
+                    </a>
+                }
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="FirmwareAdvisory" Title="" Sortable="false" Width="0">
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
+            </BbDataGridTemplateColumn>
+        </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
     <BbDialogContent Class="sm:max-w-lg">
@@ -68,8 +62,8 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Severity</BbLabel>
                 <BbSelect TValue="AdvisorySeverity" @bind-Value="_severity">
                     <BbSelectTrigger TValue="AdvisorySeverity">
@@ -84,19 +78,19 @@
                     </BbSelectContent>
                 </BbSelect>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="title">Title</BbLabel>
                 <BbInput Id="title" @bind-Value="_title" Placeholder="OTA bricking bug"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="content">Content</BbLabel>
-                <BbTextarea Id="content" @bind-Value="_content" Class="min-h-24"/>
+                <BbTextarea Id="content" @bind-Value="_content" Class="bb:min-h-24"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="affects">Affected versions</BbLabel>
                 <BbInput Id="affects" @bind-Value="_affectedVersions" Placeholder="&lt;1.4.0"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="url">Link</BbLabel>
                 <BbInput Id="url" @bind-Value="_url"
                          Placeholder="https://github.com/OpenShock/firmware/issues/123"/>
@@ -130,9 +124,9 @@
 
     private static BadgeVariant SeverityVariant(AdvisorySeverity severity) => severity switch
     {
-        AdvisorySeverity.Critical => BadgeVariant.Destructive,
-        AdvisorySeverity.Warning => BadgeVariant.Default,
-        _ => BadgeVariant.Secondary
+        AdvisorySeverity.Critical => BadgeVariant.SoftDestructive,
+        AdvisorySeverity.Warning => BadgeVariant.SoftWarning,
+        _ => BadgeVariant.SoftInfo
     };
 
     private void OpenCreate()

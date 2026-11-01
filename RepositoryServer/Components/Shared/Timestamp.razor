@@ -1,0 +1,9 @@
+@*
+    A time, relative because "how long ago" is what an admin is checking, with the exact UTC value on
+    hover. The relative form also sidesteps the browser's time zone, which the server cannot see.
+*@
+<time class="bb:text-muted-foreground bb:whitespace-nowrap" datetime="@Value.ToString("O")" title="@Value.ToUniversalTime().ToString("u")">@AdminFormat.Relative(Value)</time>
+
+@code {
+    [Parameter, EditorRequired] public required DateTimeOffset Value { get; set; }
+}

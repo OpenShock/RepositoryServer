@@ -1,0 +1,15 @@
+@using OpenShock.RepositoryServer.RepoServerDb.Models
+
+@* Where a build came from: the first thing to check about a release that looks wrong. *@
+<a href="@Url" target="_blank" rel="noreferrer" class="bb:hover:text-foreground bb:text-muted-foreground bb:whitespace-nowrap bb:underline-offset-4 bb:hover:underline"
+   title="@($"{Repository.Owner}/{Repository.Repo} at {Commit}")">
+    <code>@Repository.Repo@@@AdminFormat.ShortCommit(Commit)</code>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public required SourceRepository Repository { get; set; }
+    [Parameter, EditorRequired] public required string Commit { get; set; }
+
+    // GitHub is the only provider there is; a second one would need its own URL shape here.
+    private string Url => $"https://github.com/{Repository.Owner}/{Repository.Repo}/commit/{Commit}";
+}

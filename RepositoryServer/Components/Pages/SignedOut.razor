@@ -11,10 +11,10 @@
 @inject AdminAuthMode AuthMode
 
 @* Empty-state anatomy, style guide §4.2: medallion, heading, helper line, action. *@
-<div class="flex w-full flex-col items-center justify-center gap-6 py-12 text-center sm:gap-8">
-    <div class="flex flex-col items-center gap-3">
-        <div class="bg-muted text-muted-foreground flex size-16 items-center justify-center rounded-2xl sm:size-20">
-            <Glyph Name="IconName.LogIn" Class="size-8 sm:size-10"/>
+<div class="bb:flex bb:w-full bb:flex-col bb:items-center bb:justify-center bb:gap-6 bb:py-12 bb:text-center sm:gap-8">
+    <div class="bb:flex bb:flex-col bb:items-center bb:gap-3">
+        <div class="bb:bg-muted bb:text-muted-foreground bb:flex size-16 bb:items-center bb:justify-center bb:rounded-2xl sm:size-20">
+            <Glyph Name="IconName.LogIn" Class="bb:size-8 sm:size-10"/>
         </div>
 
         @*
@@ -24,14 +24,14 @@
         *@
         <AuthorizeView>
             <Authorized>
-                <h3 class="text-xl font-medium sm:text-2xl">Still signed in</h3>
-                <p class="text-muted-foreground text-base sm:text-lg">
-                    This session belongs to <span class="font-medium">@context.User.Identity?.Name</span>.
+                <h3 class="bb:text-xl bb:font-medium sm:text-2xl">Still signed in</h3>
+                <p class="bb:text-muted-foreground bb:text-base sm:text-lg">
+                    This session belongs to <span class="bb:font-medium">@context.User.Identity?.Name</span>.
                 </p>
             </Authorized>
             <NotAuthorized>
-                <h3 class="text-xl font-medium sm:text-2xl">Signed out</h3>
-                <p class="text-muted-foreground text-base sm:text-lg">
+                <h3 class="bb:text-xl bb:font-medium sm:text-2xl">Signed out</h3>
+                <p class="bb:text-muted-foreground bb:text-base sm:text-lg">
                     Your admin session has ended.
                 </p>
             </NotAuthorized>
@@ -43,7 +43,7 @@
         *@
         @if (AuthMode.DevBypass)
         {
-            <p class="text-muted-foreground text-base sm:text-lg">
+            <p class="bb:text-muted-foreground bb:text-base sm:text-lg">
                 Authentication is disabled on this server, so there is no session to end.
             </p>
         }

@@ -4,12 +4,10 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Chips">
-    <Subtitle>
-        Names must match esptool-js chip identifiers exactly, since the web flashtool passes them straight
-        through to the flasher.
-    </Subtitle>
+    <Subtitle>Names must match esptool-js chip identifiers exactly.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add chip</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add chip</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
@@ -18,43 +16,47 @@
     panel costs half the width on every visit for something used occasionally, and it needs its own
     "which record am I editing?" affordance, which a dialog title answers by itself.
 *@
-<BbCard Class="w-full overflow-hidden p-0">
-    <BbDataGrid TData="FirmwareChip" Items="_chips" IsLoading="Loading" Striped="true"
-                StickyHeader="true">
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="FirmwareChip" TableContainerClass="@TableFrame.TableClass" Items="_chips" IsLoading="Loading" StickyHeader="true"
+                ShowSearch="true" SearchPlaceholder="Search chips">
         <EmptyTemplate>
-            <div class="flex flex-col items-center gap-3 py-12 text-center">
-                <p class="text-muted-foreground">No chips yet.</p>
-                <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Add the first chip</BbButton>
-            </div>
+            <EmptyState Icon="IconName.Chip" Title="No chips"
+                        Description="Boards reference a chip, so chips are the first thing a new instance needs.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first chip</BbButton>
+            </EmptyState>
         </EmptyTemplate>
         <Columns>
-            <BbDataGridPropertyColumn TData="FirmwareChip" TProp="string" Property="c => c.Name" Title="Name"/>
+            <BbDataGridPropertyColumn TData="FirmwareChip" TProp="string" Property="c => c.Name" Title="Name">
+                <CellTemplate>
+                    <code>@context.Name</code>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
             <BbDataGridTemplateColumn TData="FirmwareChip" Title="Architecture">
-                @(context.Architecture?.ToString().ToLowerInvariant() ?? "unspecified")
+                @if (context.Architecture is { } architecture)
+                {
+                    @architecture.ToString().ToLowerInvariant()
+                }
+                else
+                {
+                    <span class="bb:text-muted-foreground">Unspecified</span>
+                }
             </BbDataGridTemplateColumn>
-            <BbDataGridTemplateColumn TData="FirmwareChip" Title="USB devices" Sortable="false">
-                <span class="text-muted-foreground">@AttachedDeviceNames(context.Id)</span>
+            <BbDataGridTemplateColumn TData="FirmwareChip" Title="USB devices" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <span class="bb:text-muted-foreground">@AttachedDeviceNames(context.Id)</span>
             </BbDataGridTemplateColumn>
-            @* Action column collapses to its content, per style guide §3.4. *@
             <BbDataGridTemplateColumn TData="FirmwareChip" Title="" Sortable="false" Width="0">
-                <div class="flex justify-end gap-1">
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenAttach(context)" AriaLabel="USB devices" title="USB devices">
-                        <Glyph Name="IconName.Usb"/>
-                    </BbButton>
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                </div>
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="USB devices" Icon="IconName.Usb" OnClick="() => OpenAttach(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
             </BbDataGridTemplateColumn>
         </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>@(_editingChipId is null ? "Add a chip" : $"Edit {_name}")</BbDialogTitle>
             <BbDialogDescription>
@@ -62,12 +64,12 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="chip-name">Name</BbLabel>
                 <BbInput Id="chip-name" @bind-Value="_name" Placeholder="ESP32-S3"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Architecture</BbLabel>
                 <BbSelect TValue="FirmwareChipArchitecture?" @bind-Value="_architecture">
                     <BbSelectTrigger TValue="FirmwareChipArchitecture?">
@@ -92,7 +94,7 @@
 </BbDialog>
 
 <BbDialog @bind-Open="_attachOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>USB devices for @_attachChipName</BbDialogTitle>
             <BbDialogDescription>
@@ -100,14 +102,14 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Currently attached</BbLabel>
-                <p class="text-muted-foreground text-sm">
-                    @(_attachChipId is { } id ? AttachedDeviceNames(id) : "none")
+                <p class="bb:text-muted-foreground bb:text-sm">
+                    @(_attachChipId is { } id ? AttachedDeviceNames(id) : "None")
                 </p>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Device</BbLabel>
                 <BbSelect TValue="Guid?" @bind-Value="_attachDeviceId">
                     <BbSelectTrigger TValue="Guid?">
@@ -166,7 +168,7 @@
             .Where(n => n is not null)
             .ToArray();
 
-        return names.Length == 0 ? "none" : string.Join(", ", names);
+        return names.Length == 0 ? "None" : string.Join(", ", names);
     }
 
     private void OpenCreate()

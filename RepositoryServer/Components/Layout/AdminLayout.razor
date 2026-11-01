@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject AdminAuthMode AuthMode
+@inject NavigationManager Navigation
 
 @*
     Hosts have to live in the layout rather than a page: toasts and dialogs raised by a page are
@@ -12,110 +13,44 @@
 <BbToastProvider Position="ToastPosition.TopCenter" PauseOnHover="true"/>
 
 <BbTooltipProvider>
-    <BbSidebarProvider>
+    <BbSidebarProvider ShouldPersist="true">
         <BbSidebar>
             <BbSidebarHeader>
-                <a href="/admin" class="flex items-center gap-2 px-2 py-1.5 font-semibold">
-                    Repository Server
+                <a href="@AdminNav.OverviewHref" aria-label="Repository Server overview" class="bb:block bb:px-1 bb:py-1">
+                    <Logo/>
                 </a>
             </BbSidebarHeader>
 
             <BbSidebarContent>
-                @*
-                    Shared first, then one section per distribution domain. Publishers and Discord
-                    webhooks sit in the shared group because both are genuinely cross-domain: the
-                    repositories table is the publish allowlist for firmware and desktop alike, and
-                    both notify through the same webhooks.
-                *@
                 <BbSidebarGroup>
-                    <BbSidebarGroupLabel>Shared</BbSidebarGroupLabel>
                     <BbSidebarGroupContent>
                         <BbSidebarMenu>
                             <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin" Match="NavLinkMatch.All">
-                                    Status
-                                </BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/repositories">
-                                    Publishers
-                                </BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/discord-webhooks">
-                                    Discord
-                                </BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            @* Shared because one file seeds both domains — the firmware catalog and
-                               the desktop modules — and a fresh instance needs both. *@
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/import">
-                                    Import
+                                <BbSidebarMenuButton Href="@AdminNav.Overview.Href" Match="NavLinkMatch.All"
+                                                     Tooltip="@AdminNav.Overview.Title">
+                                    <Glyph Name="AdminNav.Overview.Icon"/>
+                                    <span>@AdminNav.Overview.Title</span>
                                 </BbSidebarMenuButton>
                             </BbSidebarMenuItem>
                         </BbSidebarMenu>
                     </BbSidebarGroupContent>
                 </BbSidebarGroup>
 
-                <BbSidebarGroup>
-                    <BbSidebarGroupLabel>Firmware</BbSidebarGroupLabel>
-                    <BbSidebarGroupContent>
-                        <BbSidebarMenu>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/releases">Releases</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/boards">Boards</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/chips">Chips</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/usb-devices">USB devices</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/usb-serial-filters">Serial filters</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/firmware/advisories">Advisories</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                        </BbSidebarMenu>
-                    </BbSidebarGroupContent>
-                </BbSidebarGroup>
+                @NavGroups(AdminNav.Primary)
 
-                <BbSidebarGroup>
-                    <BbSidebarGroupLabel>Desktop</BbSidebarGroupLabel>
-                    <BbSidebarGroupContent>
-                        <BbSidebarMenu>
-                            <BbSidebarMenuItem>
-                                <BbSidebarMenuButton Href="/admin/desktop/modules">Modules</BbSidebarMenuButton>
-                            </BbSidebarMenuItem>
-                        </BbSidebarMenu>
-                    </BbSidebarGroupContent>
-                </BbSidebarGroup>
+                @* Pushes setup to the bottom, so day-to-day pages stay at the top. *@
+                <div class="bb:grow" aria-hidden="true"></div>
+
+                @NavGroups(AdminNav.Footer)
             </BbSidebarContent>
-
-            <BbSidebarFooter>
-                <AuthorizeView>
-                    <Authorized>
-                        <div class="px-2 py-1.5 text-sm text-muted-foreground">
-                            @context.User.Identity?.Name
-                        </div>
-                        <BbButton Href="/auth/logout" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
-                                  Class="w-full justify-start">
-                            Sign out
-                        </BbButton>
-                    </Authorized>
-                </AuthorizeView>
-            </BbSidebarFooter>
         </BbSidebar>
 
         @*
             Shell per style guide §2.1: a full-viewport, non-scrolling frame with exactly one scroll
-            container inside it. main is flex-1 min-h-0 — without min-h-0 a flex child refuses to
+            container inside it. main is flex-1 min-h-0: without min-h-0 a flex child refuses to
             shrink below its content and the page grows instead of scrolling.
         *@
-        <BbSidebarInset Class="flex h-screen flex-col overflow-hidden">
+        <BbSidebarInset Class="bb:flex h-screen bb:min-w-0 bb:flex-col bb:overflow-hidden">
             @*
                 Red rather than the guide's orangered: this is not "you are on dev", it is "this
                 server currently has no authentication at all", which is the same severity as a
@@ -123,104 +58,138 @@
             *@
             @if (AuthMode.DevBypass)
             {
-                <div class="bg-destructive flex flex-none items-center justify-center gap-2 px-3 py-1.5
-                            text-sm font-medium text-white" role="alert">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4 shrink-0" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                         stroke-linejoin="round" aria-hidden="true">
-                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
-                        <path d="M12 9v4"/><path d="M12 17h.01"/>
-                    </svg>
+                <div class="bb:bg-destructive bb:text-destructive-foreground bb:flex flex-none bb:items-center bb:justify-center bb:gap-2 bb:px-3 bb:py-1.5 bb:text-sm bb:font-medium"
+                     role="alert">
+                    <Glyph Name="IconName.Warning" Class="bb:size-4 bb:shrink-0"/>
                     <span>
-                        Authentication is disabled. Every request to this server is being granted full
-                        administrator access without a login — do not expose it to a network.
+                        Authentication is disabled. Every request is granted full administrator access
+                        without a login. Do not expose this server to a network.
                     </span>
                 </div>
             }
 
-            @*
-                Style guide §2.2: sidebar toggle, vertical separator, breadcrumbs, elastic spacer,
-                then identity. The breadcrumb is derived from the route rather than passed down by
-                each page, so a new page cannot forget to set it.
-            *@
-            <header class="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+            @* Style guide §2.2: sidebar toggle, separator, breadcrumbs, elastic spacer, theme, user. *@
+            <header class="bb:flex bb:h-12 bb:shrink-0 bb:items-center bb:gap-2 bb:border-b bb:px-3">
                 <BbSidebarTrigger/>
-                <hr class="mr-2 h-4 w-px"/>
+                <div class="bb:bg-border mr-2 bb:h-4 bb:w-px bb:shrink-0" aria-hidden="true"></div>
 
-                <nav aria-label="Breadcrumb" class="flex shrink-0 items-center gap-1.5 text-sm">
-                    @foreach (var (crumb, isLast) in Breadcrumbs())
+                <nav aria-label="Breadcrumb" class="bb:flex bb:min-w-0 bb:items-center bb:gap-1.5 bb:text-sm">
+                    @{ var trail = AdminNav.Trail(Navigation.ToBaseRelativePath(Navigation.Uri)); }
+                    @for (var i = 0; i < trail.Count; i++)
                     {
+                        var crumb = trail[i];
+                        var isLast = i == trail.Count - 1;
+
                         @if (isLast)
                         {
-                            <span class="font-medium" aria-current="page">@crumb</span>
+                            <span class="bb:truncate bb:font-medium" aria-current="page">@crumb.Label</span>
                         }
                         else
                         {
-                            <span class="text-muted-foreground">@crumb</span>
-                            <span class="text-muted-foreground" aria-hidden="true">/</span>
+                            @if (crumb.Href is not null)
+                            {
+                                <a href="@crumb.Href" class="bb:text-muted-foreground bb:hover:text-foreground bb:whitespace-nowrap bb:transition-colors">@crumb.Label</a>
+                            }
+                            else
+                            {
+                                <span class="bb:text-muted-foreground bb:hidden bb:whitespace-nowrap sm:inline">@crumb.Label</span>
+                            }
+                            <span class="@(crumb.Href is null ? "bb:text-muted-foreground bb:hidden sm:inline" : "bb:text-muted-foreground")" aria-hidden="true">/</span>
                         }
                     }
                 </nav>
 
-                <div class="flex-1"></div>
+                <div class="bb:flex-1"></div>
+
+                <ThemeSwitch/>
 
                 <AuthorizeView>
                     <Authorized>
-                        <span class="text-muted-foreground hidden text-sm lg:inline-block">
-                            @context.User.Identity?.Name
-                        </span>
+                        <BbDropdownMenu>
+                            <BbDropdownMenuTrigger AsChild="false" Class="bb:text-muted-foreground bb:hover:text-foreground bb:flex bb:cursor-pointer bb:items-center bb:gap-2 bb:text-sm bb:select-none">
+                                <span class="bb:bg-muted bb:text-foreground bb:flex bb:size-8 bb:items-center bb:justify-center bb:rounded-full bb:text-xs bb:font-medium bb:uppercase" aria-hidden="true">
+                                    @Initial(context.User.Identity?.Name)
+                                </span>
+                                <span class="bb:hidden lg:inline-block">@context.User.Identity?.Name</span>
+                                <span class="bb:sr-only">Account menu</span>
+                            </BbDropdownMenuTrigger>
+                            <BbDropdownMenuContent>
+                                <BbDropdownMenuItem OnClick="SignOut" Class="bb:flex bb:cursor-pointer bb:items-center bb:gap-2">
+                                    <Glyph Name="IconName.LogOut"/>
+                                    Sign out
+                                </BbDropdownMenuItem>
+                            </BbDropdownMenuContent>
+                        </BbDropdownMenu>
                     </Authorized>
                 </AuthorizeView>
             </header>
 
-            <main class="min-h-0 flex-1 overflow-x-hidden">
+            <main class="bb:min-h-0 bb:flex-1 bb:overflow-x-hidden">
                 @*
                     The page container, §2.4. Pages are its direct children and inherit the gap-4,
-                    which is why they carry no vertical margins of their own.
+                    which is why they carry no vertical margins of their own. The bottom padding is
+                    larger than the guide's because admin pages regularly outgrow the viewport, and a
+                    table should not end flush against the footer.
                 *@
-                <div class="container mx-auto flex h-full flex-col items-start justify-start gap-4
-                            px-4 pt-4 pb-1 sm:px-12 sm:pt-12 sm:pb-2">
+                <div class="container bb:mx-auto bb:flex bb:min-h-full bb:flex-col bb:items-start bb:justify-start bb:gap-4 bb:px-4 bb:pt-4 pb-6 sm:px-12 sm:pt-12 sm:pb-8">
                     @Body
                 </div>
             </main>
+
+            <footer class="bb:text-muted-foreground bb:flex flex-none bb:items-center bb:justify-between bb:gap-4 bb:border-t bb:px-3 bb:py-1 bb:text-sm">
+                <div class="bb:truncate">
+                    Made with <span class="bb:text-destructive" aria-hidden="true">&hearts;</span><span class="bb:sr-only">love</span> by the
+                    <a href="https://github.com/OpenShock" target="_blank" rel="noopener" class="bb:hover:text-foreground">OpenShock Team</a>
+                </div>
+                <div class="bb:flex bb:shrink-0 bb:items-center bb:gap-4">
+                    @* The API reference is served by this process but is not a Blazor route. *@
+                    <a href="/scalar" target="_blank" rel="noopener" class="bb:hover:text-foreground bb:hidden sm:inline">API reference</a>
+                    <span class="bb:font-mono bb:text-xs" title="Running server version">@Version</span>
+                </div>
+            </footer>
         </BbSidebarInset>
     </BbSidebarProvider>
 </BbTooltipProvider>
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = null!;
+    private static readonly string Version = ResolveVersion();
 
-    /// <summary>
-    /// Route segments after the origin, title-cased, with the last one flagged as current. Derived
-    /// from the URL so a page cannot forget to declare its own trail.
-    /// </summary>
-    private IEnumerable<(string Crumb, bool IsLast)> Breadcrumbs()
+    private static string ResolveVersion()
     {
-        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].Trim('/');
+        var version = typeof(AdminLayout).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion ?? "dev";
 
-        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Select(Humanize)
-            .ToArray();
-
-        // "/admin" on its own is the dashboard; name it so the bar is never a single word.
-        if (segments.Length == 1) segments = [segments[0], "Status"];
-
-        for (var i = 0; i < segments.Length; i++)
-        {
-            yield return (segments[i], i == segments.Length - 1);
-        }
+        // The SDK appends "+<commit>"; the short form is enough to tell two deployments apart.
+        var plus = version.IndexOf('+');
+        return plus < 0 ? version : $"{version[..plus]}+{AdminFormat.ShortCommit(version[(plus + 1)..])}";
     }
 
-    private static string Humanize(string segment) => segment switch
-    {
-        "admin" => "Administration",
-        "usb-devices" => "USB devices",
-        "usb-serial-filters" => "Serial filters",
-        "repositories" => "Publishers",
-        "discord-webhooks" => "Discord webhooks",
-        // A dotted segment is a record's own id — a module's, say — and those are lowercase by
-        // definition. Title-casing one would print an id that does not exist.
-        _ when segment.Contains('.') => segment,
-        _ => string.Concat(char.ToUpperInvariant(segment[0]), segment[1..].Replace('-', ' '))
-    };
+    private static string Initial(string? name) => string.IsNullOrEmpty(name) ? "?" : name[..1];
+
+    // A full page load: /auth/logout is an HTTP endpoint that clears the cookie, not a Blazor route.
+    private void SignOut() => Navigation.NavigateTo("/auth/logout", forceLoad: true);
+
+    private static RenderFragment NavGroups(AdminNavGroup[] groups) => @<text>
+        @foreach (var group in groups)
+        {
+            <BbSidebarGroup>
+                <BbSidebarGroupLabel>@group.Title</BbSidebarGroupLabel>
+                <BbSidebarGroupContent>
+                    <BbSidebarMenu>
+                        @foreach (var item in group.Items)
+                        {
+                            <BbSidebarMenuItem>
+                                <BbSidebarMenuButton Href="@item.Href" Tooltip="@item.Title">
+                                    <Glyph Name="item.Icon"/>
+                                    <span>@item.Title</span>
+                                </BbSidebarMenuButton>
+                            </BbSidebarMenuItem>
+                        }
+                    </BbSidebarMenu>
+                </BbSidebarGroupContent>
+            </BbSidebarGroup>
+        }
+    </text>;
 }

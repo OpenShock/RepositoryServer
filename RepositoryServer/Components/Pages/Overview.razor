@@ -1,0 +1,243 @@
+@page "/admin"
+@attribute [Authorize(Policy = AuthSchemas.Policies.Admin)]
+@inherits AdminDataPageBase
+
+@*
+    An operational dashboard, so it answers questions in the order an admin has them: is anything
+    wrong, what is being served, what is on its way, and only then how much of everything there is.
+    Exceptions come first and are the only coloured thing on the page.
+*@
+<PageHeader Title="Overview">
+    <Subtitle>What needs you, and what this server is serving.</Subtitle>
+    <Actions>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
+    </Actions>
+</PageHeader>
+
+@if (LoadFailed)
+{
+    <TableFrame Failed="true" OnRetry="ReloadAsync"/>
+}
+else if (_overview is null)
+{
+    <div class="bb:flex h-64 bb:w-full bb:items-center bb:justify-center">
+        <BbSpinner Class="bb:text-muted-foreground bb:size-8"/>
+    </div>
+}
+else
+{
+    var o = _overview;
+
+    <div class="bb:flex bb:w-full bb:flex-col bb:gap-6">
+        @if (!o.SetupComplete)
+        {
+            @* The dashed card is the app's shorthand for "nothing here yet, do this next", §5. *@
+            <section class="bb:flex bb:w-full bb:flex-col bb:gap-4 bb:rounded-lg bb:border bb:border-dashed bb:p-6" aria-labelledby="setup-heading">
+                <div>
+                    <h2 id="setup-heading" class="bb:text-lg bb:font-semibold">Finish setting up</h2>
+                    <p class="bb:text-muted-foreground bb:mt-1 bb:text-sm">
+                        CI cannot publish firmware yet: release init rejects a board it does not know, and a
+                        repository needs permission to publish. Import a catalog, or add these in order.
+                    </p>
+                </div>
+                <ol class="bb:divide-y bb:rounded-md bb:border">
+                    @SetupStep(1, "Chips", o.Chips, "/admin/firmware/chips")
+                    @SetupStep(2, "Boards", o.Boards, "/admin/firmware/boards")
+                    @SetupStep(3, "A publisher with the firmware scope", o.FirmwarePublishers, "/admin/repositories")
+                </ol>
+                <div>
+                    <BbButton Href="/admin/import">
+                        <Glyph Name="IconName.Upload"/>
+                        Import a catalog
+                    </BbButton>
+                </div>
+            </section>
+        }
+
+        <section class="bb:flex bb:w-full bb:flex-col bb:gap-3" aria-labelledby="attention-heading">
+            <h2 id="attention-heading" class="bb:text-lg bb:font-semibold">Needs attention</h2>
+
+            @if (o.Attention.Count == 0)
+            {
+                <div class="bb:flex bb:items-center bb:gap-3 bb:rounded-md bb:border bb:px-4 bb:py-3">
+                    <Glyph Name="IconName.Check" Class="text-success size-5 bb:shrink-0"/>
+                    <span class="bb:text-muted-foreground">Nothing needs you right now.</span>
+                </div>
+            }
+            else
+            {
+                <div class="bb:divide-y bb:rounded-md bb:border">
+                    @foreach (var item in o.Attention)
+                    {
+                        <div class="bb:flex bb:flex-wrap bb:items-center gap-x-4 gap-y-2 bb:px-4 bb:py-3">
+                            <div class="bb:flex bb:min-w-0 bb:flex-1 basis-64 bb:items-start bb:gap-3">
+                                <Glyph Name="SeverityIcon(item.Severity)" Class="@SeverityIconClass(item.Severity)"/>
+                                <div class="bb:min-w-0">
+                                    <p class="bb:font-medium">@item.Title</p>
+                                    <p class="bb:text-muted-foreground bb:text-sm">@item.Detail</p>
+                                </div>
+                            </div>
+                            <BbBadge Variant="SeverityBadge(item.Severity)">@item.Severity</BbBadge>
+                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Href="@item.Href">
+                                @item.ActionLabel
+                                <Glyph Name="IconName.ArrowRight"/>
+                            </BbButton>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <div class="bb:grid bb:w-full bb:grid-cols-1 bb:gap-4 bb:sm:grid-cols-2 bb:lg:grid-cols-4">
+            <StatCard Title="Firmware versions" Value="o.FirmwareVersions" Icon="IconName.Package"
+                      Href="/admin/firmware/releases" Note="published"/>
+            <StatCard Title="Releases in flight" Value="o.InFlight.Count" Icon="IconName.Rocket"
+                      Href="/admin/firmware/releases"
+                      Note="@(o.InFlight.Any(r => r.Status == ReleaseStatus.Editing) ? $"{o.InFlight.Count(r => r.Status == ReleaseStatus.Editing)} blocked" : "none blocked")"/>
+            <StatCard Title="Desktop modules" Value="o.Modules" Icon="IconName.Puzzle"
+                      Href="/admin/desktop/modules" Note="@AdminFormat.Count(o.ModuleVersions, "version")"/>
+            <StatCard Title="Publishers" Value="o.Publishers" Icon="IconName.KeyRound"
+                      Href="/admin/repositories" Note="@($"{o.FirmwarePublishers} can publish firmware")"/>
+        </div>
+
+        <div class="bb:grid bb:w-full bb:grid-cols-1 bb:gap-6 lg:grid-cols-2">
+            <section class="bb:flex bb:min-w-0 bb:flex-col bb:gap-3" aria-labelledby="live-heading">
+                <div>
+                    <h2 id="live-heading" class="bb:text-lg bb:font-semibold">Live firmware</h2>
+                    <p class="bb:text-muted-foreground bb:text-sm">What a hub on each channel is offered right now.</p>
+                </div>
+                <div class="bb:divide-y bb:rounded-md bb:border">
+                    @foreach (var channel in o.Channels)
+                    {
+                        <div class="bb:flex bb:flex-wrap bb:items-center gap-x-4 gap-y-1 bb:px-4 bb:py-3">
+                            <span class="bb:w-20 bb:shrink-0 bb:font-medium">@AdminFormat.Label(channel.Channel)</span>
+                            @if (channel.Version is null)
+                            {
+                                <span class="bb:text-muted-foreground bb:flex-1 bb:text-sm">Nothing published</span>
+                            }
+                            else
+                            {
+                                <code class="bb:min-w-0 bb:flex-1 bb:truncate" title="@channel.Version">@channel.Version</code>
+                                <span class="bb:text-muted-foreground bb:flex bb:shrink-0 bb:flex-wrap bb:items-center gap-x-4 bb:text-sm">
+                                    @if (channel.PublishedOn != channel.Channel)
+                                    {
+                                        <span>from @AdminFormat.Label(channel.PublishedOn!.Value).ToLowerInvariant()</span>
+                                    }
+                                    <Timestamp Value="channel.ReleasedAt!.Value"/>
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="bb:flex bb:min-w-0 bb:flex-col bb:gap-3" aria-labelledby="pipeline-heading">
+                <div>
+                    <h2 id="pipeline-heading" class="bb:text-lg bb:font-semibold">Release pipeline</h2>
+                    <p class="bb:text-muted-foreground bb:text-sm">Created by CI and not published yet.</p>
+                </div>
+                <div class="bb:divide-y bb:rounded-md bb:border">
+                    @if (o.InFlight.Count == 0)
+                    {
+                        <EmptyState Compact="true" Icon="IconName.Inbox" Title="Nothing in flight"/>
+                    }
+                    @foreach (var release in o.InFlight.Take(MaxInFlight))
+                    {
+                        <div class="bb:flex bb:flex-wrap bb:items-center gap-x-4 gap-y-1 bb:px-4 bb:py-3">
+                            <code class="bb:min-w-0 bb:flex-1 bb:truncate" title="@release.Version">@release.Version</code>
+                            <span class="bb:text-muted-foreground bb:text-sm">@AdminFormat.Label(release.Channel)</span>
+                            @if (release.Status == ReleaseStatus.Editing)
+                            {
+                                <BbBadge Variant="BadgeVariant.SoftWarning">Changelog blocked</BbBadge>
+                            }
+                            else
+                            {
+                                <BbBadge Variant="BadgeVariant.Secondary">Staging</BbBadge>
+                            }
+                            <Timestamp Value="release.CreatedAt"/>
+                        </div>
+                    }
+                    @if (o.InFlight.Count > MaxInFlight)
+                    {
+                        <a href="/admin/firmware/releases" class="bb:text-muted-foreground bb:hover:text-foreground bb:block bb:px-4 bb:py-3 bb:text-sm bb:transition-colors">
+                            and @(o.InFlight.Count - MaxInFlight) more
+                        </a>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <section class="bb:flex bb:w-full bb:flex-col bb:gap-3" aria-labelledby="catalog-heading">
+            <h2 id="catalog-heading" class="bb:text-lg bb:font-semibold">Catalog and configuration</h2>
+            <div class="bb:grid bb:grid-cols-1 bb:gap-3 bb:sm:grid-cols-2 bb:lg:grid-cols-3">
+                @CatalogLink("Boards", IconName.Board, "/admin/firmware/boards",
+                    o.DiscontinuedBoards > 0 ? $"{o.Boards}, {o.DiscontinuedBoards} discontinued" : o.Boards.ToString())
+                @CatalogLink("Chips", IconName.Chip, "/admin/firmware/chips", o.Chips.ToString())
+                @CatalogLink("USB devices", IconName.Usb, "/admin/firmware/usb-devices", o.UsbDevices.ToString())
+                @CatalogLink("Serial filters", IconName.Filter, "/admin/firmware/usb-serial-filters", o.SerialFilters.ToString())
+                @CatalogLink("Advisories", IconName.Shield, "/admin/firmware/advisories",
+                    o.CriticalAdvisories > 0 ? $"{o.Advisories}, {o.CriticalAdvisories} critical" : o.Advisories.ToString())
+                @CatalogLink("Discord webhooks", IconName.Bell, "/admin/discord-webhooks", $"{o.EnabledWebhooks} of {o.Webhooks} enabled")
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    /// <summary>Enough to see the shape of the pipeline without pushing the rest of the page away.</summary>
+    private const int MaxInFlight = 5;
+
+    private AdminOverview? _overview;
+
+    protected override async Task LoadDataAsync(AsyncServiceScope scope)
+    {
+        _overview = await scope.Get<AdminOverviewService>().GetAsync();
+    }
+
+    private static IconName SeverityIcon(AttentionSeverity severity) => severity switch
+    {
+        AttentionSeverity.Blocking => IconName.Alert,
+        AttentionSeverity.Warning => IconName.Warning,
+        _ => IconName.Info
+    };
+
+    private static string SeverityIconClass(AttentionSeverity severity) => severity switch
+    {
+        AttentionSeverity.Blocking => "bb:text-destructive bb:mt-0.5 size-5 bb:shrink-0",
+        AttentionSeverity.Warning => "text-warning bb:mt-0.5 size-5 bb:shrink-0",
+        _ => "text-info bb:mt-0.5 size-5 bb:shrink-0"
+    };
+
+    private static BadgeVariant SeverityBadge(AttentionSeverity severity) => severity switch
+    {
+        AttentionSeverity.Blocking => BadgeVariant.SoftDestructive,
+        AttentionSeverity.Warning => BadgeVariant.SoftWarning,
+        _ => BadgeVariant.SoftInfo
+    };
+
+    private static RenderFragment SetupStep(int number, string label, int count, string href) => @<li class="bb:flex bb:items-center bb:gap-3 bb:px-4 bb:py-3">
+        @if (count > 0)
+        {
+            <Glyph Name="IconName.Check" Class="text-success size-5 bb:shrink-0"/>
+            <span class="bb:text-muted-foreground bb:min-w-0 bb:flex-1">@label</span>
+            <span class="bb:sr-only">done</span>
+        }
+        else
+        {
+            <span class="bb:bg-muted bb:text-muted-foreground bb:flex size-5 bb:shrink-0 bb:items-center bb:justify-center bb:rounded-full bb:text-xs bb:font-medium">@number</span>
+            <span class="bb:min-w-0 bb:flex-1 bb:font-medium">@label</span>
+            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Href="@href">
+                Add
+                <Glyph Name="IconName.ArrowRight"/>
+            </BbButton>
+        }
+    </li>;
+
+    private static RenderFragment CatalogLink(string title, IconName icon, string href, string detail) => @<a href="@href" class="bb:hover:bg-accent bb:flex bb:min-w-0 bb:items-center bb:gap-3 bb:rounded-md bb:border bb:p-4 bb:transition-colors">
+        <Glyph Name="icon" Class="size-5 bb:shrink-0"/>
+        <span class="bb:min-w-0">
+            <span class="bb:block bb:truncate bb:font-medium">@title</span>
+            <span class="bb:text-muted-foreground bb:block bb:truncate bb:text-xs">@detail</span>
+        </span>
+    </a>;
+}

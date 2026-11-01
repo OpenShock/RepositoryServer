@@ -1,51 +1,22 @@
 @*
-    One figure on the status dashboard, following the template's dashboard card: glyph in a rounded
-    tile, the number beside it, the label under both, and a note line for the qualifier.
-
-    Takes a note rather than composing its own wording: the counts mean different things per row,
-    and only the page knows which of them is worth flagging.
+    One figure, style guide §3.1: title left, glyph right, number, qualifier. The whole card is the
+    link to the page that manages it, rather than a small "Manage" link inside it.
 *@
-
-<BbCard Class="p-4">
-    <div class="flex items-center gap-3">
-        <div class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
-            <Glyph Name="Icon" Class="size-4"/>
-        </div>
-        <span class="text-2xl font-bold">@Value</span>
-    </div>
-
-    <p class="mt-2 text-sm font-medium">@Title</p>
-
-    @if (!string.IsNullOrEmpty(Note))
-    {
-        @* Destructive is a token; the guide forbids inventing a colour for "needs attention". *@
-        <p class="@(NoteIsWarning ? "text-destructive text-xs" : "text-muted-foreground text-xs")">
-            @Note
-        </p>
-    }
-
-    @if (!string.IsNullOrEmpty(Href))
-    {
-        <a href="@Href" class="text-muted-foreground mt-2 inline-block text-xs underline">Manage</a>
-    }
-</BbCard>
+<a href="@Href" class="bb:bg-card bb:hover:bg-accent bb:flex bb:min-w-0 bb:flex-col bb:gap-1 bb:rounded-lg bb:border bb:p-4 bb:transition-colors">
+    <span class="bb:flex bb:items-center bb:justify-between bb:gap-2">
+        <span class="bb:truncate bb:text-sm bb:font-medium">@Title</span>
+        <Glyph Name="Icon" Class="bb:text-muted-foreground bb:size-4 bb:shrink-0"/>
+    </span>
+    <span class="bb:text-2xl font-bold bb:tabular-nums">@Value</span>
+    <span class="bb:text-muted-foreground bb:min-h-4 bb:truncate bb:text-xs" title="@Note">@Note</span>
+</a>
 
 @code {
-    /// <summary>What the figure counts.</summary>
     [Parameter, EditorRequired] public required string Title { get; set; }
-
-    /// <summary>The figure itself.</summary>
     [Parameter, EditorRequired] public required int Value { get; set; }
-
-    /// <summary>Glyph shown in the tile.</summary>
     [Parameter, EditorRequired] public required IconName Icon { get; set; }
+    [Parameter, EditorRequired] public required string Href { get; set; }
 
-    /// <summary>Qualifier under the figure, e.g. how many of them are in a state worth knowing about.</summary>
+    /// <summary>Qualifier under the figure. The slot is kept when empty so a row of cards lines up.</summary>
     [Parameter] public string? Note { get; set; }
-
-    /// <summary>Set when the note describes something that needs attention rather than mere detail.</summary>
-    [Parameter] public bool NoteIsWarning { get; set; }
-
-    /// <summary>Page that manages whatever is being counted, when there is one.</summary>
-    [Parameter] public string? Href { get; set; }
 }

@@ -5,18 +5,12 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="@(_module?.Name ?? ModuleId)">
-    <Subtitle>
-        Everything the desktop index advertises for <code>@ModuleId</code>. Versions are normally
-        written by the module's CI, which uploads the zip and refuses to overwrite a version that
-        exists; what is here is the administrative override for correcting a row or registering a zip
-        this server did not upload.
-    </Subtitle>
+    <Subtitle>Everything the desktop index advertises for <code>@ModuleId</code>.</Subtitle>
     <Actions>
-        <BbButton Variant="ButtonVariant.Outline" Href="/admin/desktop/modules">All modules</BbButton>
         @if (_module is not null)
         {
-            <BbButton Variant="ButtonVariant.Outline" OnClick="OpenEditModule">Edit module</BbButton>
-            <BbButton OnClick="OpenCreateVersion">Add version</BbButton>
+            <BbButton OnClick="OpenCreateVersion"><Glyph Name="IconName.Plus"/>Add version</BbButton>
+            <BbButton Variant="ButtonVariant.Outline" OnClick="OpenEditModule"><Glyph Name="IconName.Pencil"/>Edit module</BbButton>
         }
     </Actions>
 </PageHeader>
@@ -24,149 +18,147 @@
 @* Style guide §5: the read is page-wide here, so the loading state is one centred spinner. *@
 @if (Loading)
 {
-    <div class="flex w-full items-center justify-center py-12">
-        <BbSpinner Class="size-8"/>
+    <div class="bb:flex h-64 bb:w-full bb:items-center bb:justify-center">
+        <BbSpinner Class="bb:text-muted-foreground bb:size-8"/>
     </div>
+}
+else if (LoadFailed)
+{
+    <TableFrame Failed="true" OnRetry="ReloadAsync"/>
 }
 else if (_module is null)
 {
-    <BbAlert Variant="AlertVariant.Warning">
-        No module with the id <code>@ModuleId</code>. It was either deleted or never created.
-    </BbAlert>
+    <EmptyState Icon="IconName.SearchX" Title="No such module"
+                Description="@($"Nothing has the id {ModuleId}. It was either deleted or never created.")">
+        <BbButton Variant="ButtonVariant.Outline" Href="/admin/desktop/modules">All modules</BbButton>
+    </EmptyState>
 }
 else
 {
-    <BbCard Class="w-full p-4">
-        <div class="flex flex-col gap-3">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-muted-foreground w-40 shrink-0 text-sm">Id</span>
-                <code>@_module.Id</code>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-muted-foreground w-40 shrink-0 text-sm">Owning repository</span>
-                @if (OwnerName(_module.RepositoryId) is { } owner)
-                {
-                    <span>@owner</span>
-                }
-                else
-                {
-                    @* The publisher story is the point of this row, so the reason is spelled out. *@
-                    <BbBadge Variant="BadgeVariant.Destructive">unassigned</BbBadge>
-                    <span class="text-muted-foreground text-sm">no CI may publish to this module</span>
-                }
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-muted-foreground w-40 shrink-0 text-sm">Description</span>
-                <span>@(string.IsNullOrWhiteSpace(_module.Description) ? "—" : _module.Description)</span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-muted-foreground w-40 shrink-0 text-sm">Source</span>
-                @if (_module.SourceUrl is { } sourceUrl)
-                {
-                    <a href="@sourceUrl" class="underline" target="_blank" rel="noreferrer">@sourceUrl</a>
-                }
-                else
-                {
-                    <span class="text-muted-foreground">—</span>
-                }
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-muted-foreground w-40 shrink-0 text-sm">Icon</span>
-                @if (_module.IconUrl is { } iconUrl)
-                {
-                    <a href="@iconUrl" class="underline" target="_blank" rel="noreferrer">@iconUrl</a>
-                }
-                else
-                {
-                    <span class="text-muted-foreground">—</span>
-                }
-            </div>
+    <dl class="bb:bg-card bb:grid bb:w-full bb:grid-cols-1 gap-x-8 gap-y-1 bb:rounded-md bb:border bb:p-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-y-3">
+        <dt class="bb:text-muted-foreground bb:text-sm">Id</dt>
+        <dd class="bb:mb-2 sm:mb-0"><code>@_module.Id</code></dd>
+
+        <dt class="bb:text-muted-foreground bb:text-sm">Owning repository</dt>
+        <dd class="bb:mb-2 sm:mb-0">
+            @if (OwnerName(_module.RepositoryId) is { } owner)
+            {
+                <code>@owner</code>
+            }
+            else
+            {
+                @* The publisher story is the point of this row, so the reason is spelled out. *@
+                <span class="bb:flex bb:flex-wrap bb:items-center bb:gap-2">
+                    <BbBadge Variant="BadgeVariant.SoftWarning">No owner</BbBadge>
+                    <span class="bb:text-muted-foreground bb:text-sm">No CI may publish to this module.</span>
+                </span>
+            }
+        </dd>
+
+        <dt class="bb:text-muted-foreground bb:text-sm">Description</dt>
+        <dd class="bb:mb-2 sm:mb-0">@(string.IsNullOrWhiteSpace(_module.Description) ? "Not set" : _module.Description)</dd>
+
+        <dt class="bb:text-muted-foreground bb:text-sm">Source</dt>
+        <dd class="bb:mb-2 bb:min-w-0 bb:truncate sm:mb-0">
+            @if (_module.SourceUrl is { } sourceUrl)
+            {
+                <a href="@sourceUrl" class="bb:underline" target="_blank" rel="noreferrer">@sourceUrl</a>
+            }
+            else
+            {
+                <span class="bb:text-muted-foreground">Not set</span>
+            }
+        </dd>
+
+        <dt class="bb:text-muted-foreground bb:text-sm">Icon</dt>
+        <dd class="bb:min-w-0 bb:truncate">
+            @if (_module.IconUrl is { } iconUrl)
+            {
+                <a href="@iconUrl" class="bb:underline" target="_blank" rel="noreferrer">@iconUrl</a>
+            }
+            else
+            {
+                <span class="bb:text-muted-foreground">Not set</span>
+            }
+        </dd>
+    </dl>
+
+    <section class="bb:mt-2 bb:flex bb:w-full bb:flex-col bb:gap-3" aria-labelledby="versions-heading">
+        <div>
+            <h2 id="versions-heading" class="bb:text-lg bb:font-semibold">Published versions</h2>
+            <p class="bb:text-muted-foreground bb:text-sm">
+                Newest first by semantic version. Normally written by the module's CI; what is here is the
+                manual override. Withdrawing one removes it from the index but keeps the zip in storage.
+            </p>
         </div>
-    </BbCard>
 
-    <h2 class="text-lg font-semibold">Published versions</h2>
-    <p class="mb-4 text-sm text-muted-foreground">
-        Newest first, by semantic version rather than by name. Withdrawing one removes it from the
-        index; the zip stays in storage so a client mid-download is not cut off.
-    </p>
-
-    <BbCard Class="w-full overflow-hidden p-0">
         @* No IsLoading: this whole block only renders once the read has finished. *@
-        <BbDataGrid TData="VersionRow" Items="_versions" Striped="true" StickyHeader="true">
-            <EmptyTemplate>
-                <div class="flex flex-col items-center gap-3 py-12 text-center">
-                    <p class="text-muted-foreground">
-                        Nothing published. The module's CI publishes here once it is wired up.
-                    </p>
-                    <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreateVersion">
-                        Register a version by hand
-                    </BbButton>
-                </div>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="VersionRow" TProp="string" Property="v => v.Name"
-                                          Title="Version" Sortable="false">
-                    <CellTemplate>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <code>@context.Name</code>
-                            @if (!context.Parseable)
+        <TableFrame>
+            <BbDataGrid TData="VersionRow" TableContainerClass="@TableFrame.TableClass" Items="_versions" StickyHeader="true">
+                <EmptyTemplate>
+                    <EmptyState Compact="true" Icon="IconName.Package" Title="Nothing published"
+                                Description="The module's CI publishes here once it is wired up.">
+                        <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreateVersion">Register a version by hand</BbButton>
+                    </EmptyState>
+                </EmptyTemplate>
+                <Columns>
+                    <BbDataGridPropertyColumn TData="VersionRow" TProp="string" Property="v => v.Name"
+                                              Title="Version" Sortable="false">
+                        <CellTemplate>
+                            <div class="bb:flex bb:flex-wrap bb:items-center bb:gap-2">
+                                <code>@context.Name</code>
+                                @if (!context.Parseable)
+                                {
+                                    @* The index parses every stored version, so this row breaks it. *@
+                                    <BbBadge Variant="BadgeVariant.SoftDestructive">Not semver</BbBadge>
+                                }
+                                else if (context.IsPrerelease)
+                                {
+                                    <BbBadge Variant="BadgeVariant.Secondary">Pre-release</BbBadge>
+                                }
+                            </div>
+                        </CellTemplate>
+                    </BbDataGridPropertyColumn>
+                    <BbDataGridTemplateColumn TData="VersionRow" Title="Zip" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                        <a href="@context.ZipUrl" class="bb:underline" target="_blank" rel="noreferrer"
+                           title="@context.ZipUrl">@Shorten(context.ZipUrl)</a>
+                    </BbDataGridTemplateColumn>
+                    <BbDataGridTemplateColumn TData="VersionRow" Title="SHA-256" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                        <span class="bb:text-muted-foreground bb:font-mono bb:text-xs" title="@context.Hash">@(context.Hash[..12])&hellip;</span>
+                    </BbDataGridTemplateColumn>
+                    <BbDataGridTemplateColumn TData="VersionRow" Title="Links" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                        <div class="bb:flex bb:flex-wrap bb:items-center bb:gap-3">
+                            @if (context.ChangelogUrl is { } changelogUrl)
                             {
-                                @* The index parses every stored version, so this row breaks it. *@
-                                <BbBadge Variant="BadgeVariant.Destructive">not semver</BbBadge>
+                                <a href="@changelogUrl" class="bb:text-sm bb:underline" target="_blank" rel="noreferrer">Changelog</a>
                             }
-                            else if (context.IsPrerelease)
+                            @if (context.ReleaseUrl is { } releaseUrl)
                             {
-                                <BbBadge Variant="BadgeVariant.Secondary">pre-release</BbBadge>
+                                <a href="@releaseUrl" class="bb:text-sm bb:underline" target="_blank" rel="noreferrer">Release</a>
                             }
                         </div>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="VersionRow" Title="Zip" Sortable="false">
-                    <a href="@context.ZipUrl" class="underline" target="_blank" rel="noreferrer"
-                       title="@context.ZipUrl">@Shorten(context.ZipUrl)</a>
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="VersionRow" Title="SHA-256" Sortable="false">
-                    <span class="font-mono text-xs text-muted-foreground" title="@context.Hash">
-                        @(context.Hash[..16])…
-                    </span>
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="VersionRow" Title="Links" Sortable="false">
-                    <div class="flex flex-wrap items-center gap-2">
-                        @if (context.ChangelogUrl is { } changelogUrl)
-                        {
-                            <a href="@changelogUrl" class="text-sm underline" target="_blank"
-                               rel="noreferrer">changelog</a>
-                        }
-                        @if (context.ReleaseUrl is { } releaseUrl)
-                        {
-                            <a href="@releaseUrl" class="text-sm underline" target="_blank"
-                               rel="noreferrer">release</a>
-                        }
-                        @if (context is { ChangelogUrl: null, ReleaseUrl: null })
-                        {
-                            <span class="text-muted-foreground">—</span>
-                        }
-                    </div>
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="VersionRow" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEditVersion(context)" AriaLabel="Edit" title="Edit">
-                            <Glyph Name="IconName.Pencil"/>
-                        </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteVersionAsync(context)" AriaLabel="Withdraw" title="Withdraw">
-                            <Glyph Name="IconName.Trash"/>
-                        </BbButton>
-                    </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
-        </BbDataGrid>
-    </BbCard>
+                    </BbDataGridTemplateColumn>
+                    <BbDataGridTemplateColumn TData="VersionRow" Title="" Sortable="false" Width="0">
+                        <RowActions>
+                            <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEditVersion(context)"/>
+                            <RowAction Label="Withdraw" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteVersionAsync(context)"/>
+                        </RowActions>
+                    </BbDataGridTemplateColumn>
+                </Columns>
+            </BbDataGrid>
+        </TableFrame>
+    </section>
 
-    <div class="flex w-full justify-end">
-        <BbButton Variant="ButtonVariant.Outline" Class="text-destructive" OnClick="DeleteModuleAsync">
+    <section class="bb:mt-2 bb:flex bb:w-full bb:flex-wrap bb:items-center bb:justify-between gap-x-4 gap-y-2 bb:rounded-md bb:border bb:px-4 bb:py-3" aria-label="Delete module">
+        <div class="bb:min-w-0">
+            <p class="bb:font-medium">Delete this module</p>
+            <p class="bb:text-muted-foreground bb:text-sm">Removes it and every version it advertises from the index.</p>
+        </div>
+        <BbButton Variant="ButtonVariant.Outline" Class="bb:text-destructive" OnClick="DeleteModuleAsync">
+            <Glyph Name="IconName.Trash"/>
             Delete module
         </BbButton>
-    </div>
+    </section>
 }
 
 <ModuleFormDialog @bind-Open="_moduleFormOpen" Model="_moduleForm" Repositories="_repositories"
@@ -185,31 +177,31 @@ else
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-name">Version</BbLabel>
                 <BbInput Id="version-name" @bind-Value="_versionForm.Name" Disabled="_editingVersion"
                          Placeholder="1.4.0"/>
-                <p class="text-muted-foreground text-xs">
+                <p class="bb:text-muted-foreground bb:text-xs">
                     Strict semantic versioning. The index parses every stored version, so one that does
                     not parse breaks the whole index rather than only itself.
                 </p>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-zip">Zip URL</BbLabel>
                 <BbInput Id="version-zip" @bind-Value="_versionForm.ZipUrl"
                          Placeholder="https://cdn.example.com/modules/id/1.4.0/module.zip"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-hash">SHA-256</BbLabel>
-                <BbInput Id="version-hash" @bind-Value="_versionForm.Hash" Class="font-mono"
+                <BbInput Id="version-hash" @bind-Value="_versionForm.Hash" Class="bb:font-mono"
                          Placeholder="64 hex characters"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-changelog">Changelog URL</BbLabel>
                 <BbInput Id="version-changelog" @bind-Value="_versionForm.ChangelogUrl"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-release">Release URL</BbLabel>
                 <BbInput Id="version-release" @bind-Value="_versionForm.ReleaseUrl"/>
             </div>

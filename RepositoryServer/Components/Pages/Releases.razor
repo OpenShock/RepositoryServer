@@ -4,60 +4,120 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Releases">
-    <Subtitle>
-        Releases CI created but has not published. A release whose changelog failed to parse lands in
-        <code>editing</code> and cannot be published until the notes are fixed here, which returns it to
-        <code>staging</code>.
-    </Subtitle>
+    <Subtitle>What CI has created, and what is being served.</Subtitle>
+    <Actions>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
+    </Actions>
 </PageHeader>
 
-<h2 class="text-lg font-semibold">In flight</h2>
+@*
+    In flight first: it is short, and it is the only part an admin may have to act on. It drives the
+    Needs attention entry on the overview, so the two have to agree on what "blocked" means.
+*@
+<section class="bb:flex bb:w-full bb:flex-col bb:gap-3" aria-labelledby="in-flight-heading">
+    <div>
+        <h2 id="in-flight-heading" class="bb:text-lg bb:font-semibold">In flight</h2>
+        <p class="bb:text-muted-foreground bb:text-sm">
+            Not published yet. A release whose changelog failed to parse cannot publish until the notes are fixed here.
+        </p>
+    </div>
 
-<BbCard Class="w-full overflow-hidden p-0">
-    <BbDataGrid TData="FirmwareRelease" Items="_releases" IsLoading="Loading" Striped="true"
-                StickyHeader="true">
-        <EmptyTemplate>
-            <p class="p-4 text-sm text-muted-foreground">Nothing in flight.</p>
-        </EmptyTemplate>
-        <Columns>
-            <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="string" Property="r => r.Version"
-                                      Title="Version">
-                <CellTemplate>
-                    <code>@context.Version</code>
-                </CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="ReleaseChannel"
-                                      Property="r => r.Channel" Title="Channel">
-                <CellTemplate>@context.Channel.ToString().ToLowerInvariant()</CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="ReleaseStatus" Property="r => r.Status"
-                                      Title="Status">
-                <CellTemplate>
-                    <BbBadge Variant="@(context.Status == ReleaseStatus.Editing
-                                          ? BadgeVariant.Destructive : BadgeVariant.Secondary)">
-                        @context.Status.ToString().ToLowerInvariant()
-                    </BbBadge>
-                </CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="DateTimeOffset" Property="r => r.CreatedAt"
-                                      Title="Created">
-                <CellTemplate>
-                    <span class="text-muted-foreground">@context.CreatedAt.ToString("u")</span>
-                </CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridTemplateColumn TData="FirmwareRelease" Title="Notes" Sortable="false">
-                <span class="text-muted-foreground">@NoteCount(context.Id)</span>
-            </BbDataGridTemplateColumn>
-            <BbDataGridTemplateColumn TData="FirmwareRelease" Title="" Sortable="false" Width="0">
-                <div class="flex justify-end">
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenChangelog(context)" AriaLabel="Fix changelog" title="Fix changelog">
-                        <Glyph Name="IconName.FileText"/>
-                    </BbButton>
-                </div>
-            </BbDataGridTemplateColumn>
-        </Columns>
-    </BbDataGrid>
-</BbCard>
+    <TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+        <BbDataGrid TData="FirmwareRelease" TableContainerClass="@TableFrame.TableClass" Items="_releases" IsLoading="Loading" StickyHeader="true">
+            <EmptyTemplate>
+                <EmptyState Compact="true" Icon="IconName.Inbox" Title="Nothing in flight"/>
+            </EmptyTemplate>
+            <Columns>
+                <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="string" Property="r => r.Version" Title="Version">
+                    <CellTemplate>
+                        <code>@context.Version</code>
+                    </CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="ReleaseChannel" Property="r => r.Channel" Title="Channel">
+                    <CellTemplate>@AdminFormat.Label(context.Channel)</CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="ReleaseStatus" Property="r => r.Status" Title="Status">
+                    <CellTemplate>
+                        @if (context.Status == ReleaseStatus.Editing)
+                        {
+                            <BbBadge Variant="BadgeVariant.SoftWarning">Changelog blocked</BbBadge>
+                        }
+                        else
+                        {
+                            <BbBadge Variant="BadgeVariant.Secondary">@AdminFormat.Label(context.Status)</BbBadge>
+                        }
+                    </CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridTemplateColumn TData="FirmwareRelease" Title="Source" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                    <CommitLink Repository="context.RepositoryNavigation" Commit="@context.CommitHash"/>
+                </BbDataGridTemplateColumn>
+                <BbDataGridPropertyColumn TData="FirmwareRelease" TProp="DateTimeOffset" Property="r => r.CreatedAt" Title="Created" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                    <CellTemplate>
+                        <Timestamp Value="context.CreatedAt"/>
+                    </CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridTemplateColumn TData="FirmwareRelease" Title="Notes" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                    <span class="bb:text-muted-foreground">@NoteCount(context.Id)</span>
+                </BbDataGridTemplateColumn>
+                <BbDataGridTemplateColumn TData="FirmwareRelease" Title="" Sortable="false" Width="0">
+                    @* One action, so the action itself rather than a menu of one. *@
+                    <div class="bb:flex bb:justify-end">
+                        <BbButton Variant="@(context.Status == ReleaseStatus.Editing ? ButtonVariant.Outline : ButtonVariant.Ghost)"
+                                  Size="ButtonSize.Small" Class="bb:whitespace-nowrap" OnClick="() => OpenChangelog(context)">
+                            <Glyph Name="IconName.FileText"/>
+                            Fix changelog
+                        </BbButton>
+                    </div>
+                </BbDataGridTemplateColumn>
+            </Columns>
+        </BbDataGrid>
+    </TableFrame>
+</section>
+
+<section class="bb:mt-2 bb:flex bb:w-full bb:flex-col bb:gap-3" aria-labelledby="published-heading">
+    <div>
+        <h2 id="published-heading" class="bb:text-lg bb:font-semibold">Published versions</h2>
+        <p class="bb:text-muted-foreground bb:text-sm">
+            Unpublishing stops a version being served. Its artifacts stay in storage, since they are immutable.
+        </p>
+    </div>
+
+    <TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+        <BbDataGrid TData="FirmwareVersion" TableContainerClass="@TableFrame.TableClass" Items="_versions" IsLoading="Loading" StickyHeader="true"
+                    ShowSearch="true" SearchPlaceholder="Search versions">
+            <EmptyTemplate>
+                <EmptyState Compact="true" Icon="IconName.Package" Title="Nothing published yet"/>
+            </EmptyTemplate>
+            <Columns>
+                <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="string" Property="v => v.Version" Title="Version">
+                    <CellTemplate>
+                        <code>@context.Version</code>
+                    </CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="ReleaseChannel" Property="v => v.Channel" Title="Channel">
+                    <CellTemplate>@AdminFormat.Label(context.Channel)</CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridTemplateColumn TData="FirmwareVersion" Title="Source" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                    <CommitLink Repository="context.RepositoryNavigation" Commit="@context.CommitHash"/>
+                </BbDataGridTemplateColumn>
+                <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="DateTimeOffset" Property="v => v.ReleaseDate" Title="Released" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                    <CellTemplate>
+                        <Timestamp Value="context.ReleaseDate"/>
+                    </CellTemplate>
+                </BbDataGridPropertyColumn>
+                <BbDataGridTemplateColumn TData="FirmwareVersion" Title="" Sortable="false" Width="0">
+                    <div class="bb:flex bb:justify-end">
+                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" Class="bb:text-destructive bb:whitespace-nowrap"
+                                  OnClick="() => DeleteVersionAsync(context.Version)">
+                            <Glyph Name="IconName.Trash"/>
+                            Unpublish
+                        </BbButton>
+                    </div>
+                </BbDataGridTemplateColumn>
+            </Columns>
+        </BbDataGrid>
+    </TableFrame>
+</section>
 
 <BbDialog @bind-Open="_changelogOpen">
     <BbDialogContent Class="sm:max-w-2xl">
@@ -69,8 +129,8 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="py-2">
-            <BbTextarea @bind-Value="_changelog" Class="min-h-64 font-mono"
+        <div class="bb:py-2">
+            <BbTextarea @bind-Value="_changelog" Class="min-h-64 bb:font-mono"
                         Placeholder="### Breaking&#10;**Config format** &#8212; Changed to TOML&#10;&#10;### Info&#10;- Fixed WiFi reconnection"/>
         </div>
 
@@ -80,46 +140,6 @@
         </BbDialogFooter>
     </BbDialogContent>
 </BbDialog>
-
-<h2 class="text-lg font-semibold">Published versions</h2>
-<p class="mb-4 max-w-3xl text-sm text-muted-foreground">
-    Removing a version stops it being served. Artifacts stay in storage: they are immutable, and a
-    version is normally pulled because it is bad rather than because the bytes must disappear.
-</p>
-
-<BbCard Class="w-full overflow-hidden p-0">
-    <BbDataGrid TData="FirmwareVersion" Items="_versions" IsLoading="Loading" Striped="true"
-                StickyHeader="true">
-        <EmptyTemplate>
-            <p class="p-4 text-sm text-muted-foreground">Nothing published yet.</p>
-        </EmptyTemplate>
-        <Columns>
-            <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="string" Property="v => v.Version"
-                                      Title="Version">
-                <CellTemplate>
-                    <code>@context.Version</code>
-                </CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="ReleaseChannel"
-                                      Property="v => v.Channel" Title="Channel">
-                <CellTemplate>@context.Channel.ToString().ToLowerInvariant()</CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="FirmwareVersion" TProp="DateTimeOffset" Property="v => v.ReleaseDate"
-                                      Title="Released">
-                <CellTemplate>
-                    <span class="text-muted-foreground">@context.ReleaseDate.ToString("u")</span>
-                </CellTemplate>
-            </BbDataGridPropertyColumn>
-            <BbDataGridTemplateColumn TData="FirmwareVersion" Title="" Sortable="false" Width="0">
-                <div class="flex justify-end">
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteVersionAsync(context.Version)" AriaLabel="Unpublish" title="Unpublish">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                </div>
-            </BbDataGridTemplateColumn>
-        </Columns>
-    </BbDataGrid>
-</BbCard>
 
 @code {
     private FirmwareRelease[] _releases = [];
@@ -154,8 +174,8 @@
     /// </summary>
     private string NoteCount(Guid releaseId) =>
         _noteCounts.GetValueOrDefault(releaseId) is var count && count == 0
-            ? "none, needs a changelog"
-            : $"{count} section(s)";
+            ? "None"
+            : AdminFormat.Count(count, "section");
 
     private void OpenChangelog(FirmwareRelease release)
     {

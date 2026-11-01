@@ -1,0 +1,10 @@
+@* The Frontend's admin pages all carry this: what the server is doing changes without this page knowing. *@
+<BbButton Variant="ButtonVariant.Outline" OnClick="OnClick" Disabled="Busy">
+    <Glyph Name="IconName.Refresh" Class="@(Busy ? "bb:size-4 bb:animate-spin" : "bb:size-4")"/>
+    Refresh
+</BbButton>
+
+@code {
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}

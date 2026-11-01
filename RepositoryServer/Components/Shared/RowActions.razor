@@ -1,0 +1,22 @@
+@*
+    A row's actions behind one "..." trigger, as the Frontend's RowActions does. Dense tables were
+    collecting a growing line of look-alike icon buttons with a delete sitting one mis-click from an
+    edit; the menu names each action and separates the destructive one. A row with a single action
+    should show that action directly instead of a menu of one.
+*@
+<div class="bb:flex bb:justify-end">
+    <BbDropdownMenu>
+        <BbDropdownMenuTrigger AsChild="false" Class="bb:hover:bg-accent bb:text-muted-foreground bb:hover:text-foreground bb:flex bb:size-8 bb:cursor-pointer bb:items-center bb:justify-center bb:rounded-md bb:transition-colors">
+            <Glyph Name="IconName.Ellipsis"/>
+            <span class="bb:sr-only">Open menu</span>
+        </BbDropdownMenuTrigger>
+        <BbDropdownMenuContent>
+            @ChildContent
+        </BbDropdownMenuContent>
+    </BbDropdownMenu>
+</div>
+
+@code {
+    /// <summary>The <see cref="RowAction"/> entries.</summary>
+    [Parameter, EditorRequired] public required RenderFragment ChildContent { get; set; }
+}

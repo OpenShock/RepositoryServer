@@ -1,0 +1,23 @@
+@inject IJSRuntime JS
+
+@*
+    Light, dark or system, as in the Frontend's header. The choice is applied by a small script in
+    App.razor before first paint, so there is no flash on load; this only changes it. Which icon shows
+    is left to the dark: variant rather than component state, so it is right on the first render.
+*@
+<BbDropdownMenu>
+    <BbDropdownMenuTrigger AsChild="false" Class="bb:text-muted-foreground bb:hover:text-foreground bb:hover:bg-accent bb:flex bb:size-8 bb:cursor-pointer bb:items-center bb:justify-center bb:rounded-md bb:transition-colors">
+        <Glyph Name="IconName.Sun" Class="size-5 dark:hidden"/>
+        <Glyph Name="IconName.Moon" Class="bb:hidden size-5 dark:block"/>
+        <span class="bb:sr-only">Toggle theme</span>
+    </BbDropdownMenuTrigger>
+    <BbDropdownMenuContent>
+        <BbDropdownMenuItem Class="bb:cursor-pointer" OnClick="@(() => SetAsync("light"))">Light</BbDropdownMenuItem>
+        <BbDropdownMenuItem Class="bb:cursor-pointer" OnClick="@(() => SetAsync("dark"))">Dark</BbDropdownMenuItem>
+        <BbDropdownMenuItem Class="bb:cursor-pointer" OnClick="@(() => SetAsync("system"))">System</BbDropdownMenuItem>
+    </BbDropdownMenuContent>
+</BbDropdownMenu>
+
+@code {
+    private async Task SetAsync(string scheme) => await JS.InvokeVoidAsync("setColorScheme", scheme);
+}

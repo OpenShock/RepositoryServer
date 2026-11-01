@@ -14,30 +14,30 @@
             <BbDialogDescription>@Description</BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="module-id">Id</BbLabel>
                 <BbInput Id="module-id" @bind-Value="Model.Id" Disabled="IdLocked"
                          Placeholder="openshock.overlay"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="module-name">Name</BbLabel>
                 <BbInput Id="module-name" @bind-Value="Model.Name" Placeholder="Overlay"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="module-description">Description</BbLabel>
                 <BbTextarea Id="module-description" @bind-Value="Model.Description"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="module-source">Source URL</BbLabel>
                 <BbInput Id="module-source" @bind-Value="Model.SourceUrl"
                          Placeholder="https://github.com/OpenShock/desktop"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="module-icon">Icon URL</BbLabel>
                 <BbInput Id="module-icon" @bind-Value="Model.IconUrl"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Owning repository</BbLabel>
                 <BbSelect TValue="Guid?" @bind-Value="Model.RepositoryId">
                     <BbSelectTrigger TValue="Guid?">
@@ -51,7 +51,7 @@
                         }
                     </BbSelectContent>
                 </BbSelect>
-                <p class="text-muted-foreground text-xs">
+                <p class="bb:text-muted-foreground bb:text-xs">
                     Only this repository's CI may publish versions of the module.
                 </p>
             </div>

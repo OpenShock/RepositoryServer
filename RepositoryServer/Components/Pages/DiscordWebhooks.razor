@@ -4,67 +4,59 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="Discord webhooks">
-    <Subtitle>
-        Notification targets, shared by firmware and desktop module publishing. Subscribing per event lets
-        maintainer alerts go somewhere other than a public releases channel.
-    </Subtitle>
+    <Subtitle>Notification targets for firmware and desktop module publishing, subscribed per event.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add webhook</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add webhook</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-        <BbDataGrid TData="DiscordWebhook" Items="_webhooks" IsLoading="Loading" Striped="true"
-                    StickyHeader="true">
-            <EmptyTemplate>
-                <BbAlert Variant="AlertVariant.Info" Class="m-2">No webhooks. Nothing is notified.</BbAlert>
-            </EmptyTemplate>
-            <Columns>
-                <BbDataGridPropertyColumn TData="DiscordWebhook" TProp="string" Property="w => w.Name"
-                                          Title="Name"/>
-                @* Masked: the URL is a credential, and anyone who can read it can post to the channel. *@
-                <BbDataGridTemplateColumn TData="DiscordWebhook" Title="URL" Sortable="false">
-                    <code class="text-muted-foreground">@DiscordWebhookMasking.Mask(context.Url)</code>
-                </BbDataGridTemplateColumn>
-                <BbDataGridTemplateColumn TData="DiscordWebhook" Title="Events" Sortable="false">
-                    @if (context.Events.Length == 0)
-                    {
-                        <span class="text-sm text-muted-foreground">none</span>
-                    }
-                    else
-                    {
-                        <div class="flex flex-wrap gap-1">
-                            @foreach (var notificationEvent in context.Events)
-                            {
-                                <BbBadge Variant="BadgeVariant.Outline">@notificationEvent.ToEventName()</BbBadge>
-                            }
-                        </div>
-                    }
-                </BbDataGridTemplateColumn>
-                <BbDataGridPropertyColumn TData="DiscordWebhook" TProp="bool" Property="w => w.Enabled"
-                                          Title="Enabled">
-                    <CellTemplate>
-                        <BbBadge Variant="@(context.Enabled ? BadgeVariant.Default : BadgeVariant.Secondary)">
-                            @(context.Enabled ? "yes" : "no")
-                        </BbBadge>
-                    </CellTemplate>
-                </BbDataGridPropertyColumn>
-                <BbDataGridTemplateColumn TData="DiscordWebhook" Title="" Sortable="false" Width="0">
-                    <div class="flex justify-end gap-1">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="DiscordWebhook" TableContainerClass="@TableFrame.TableClass" Items="_webhooks" IsLoading="Loading" StickyHeader="true">
+        <EmptyTemplate>
+            <EmptyState Icon="IconName.Bell" Title="No webhooks" Description="Nobody is notified about publishes.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first webhook</BbButton>
+            </EmptyState>
+        </EmptyTemplate>
+        <Columns>
+            <BbDataGridPropertyColumn TData="DiscordWebhook" TProp="string" Property="w => w.Name" Title="Name"/>
+            @* Masked: the URL is a credential, and anyone who can read it can post to the channel. *@
+            <BbDataGridTemplateColumn TData="DiscordWebhook" Title="URL" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                <code class="bb:text-muted-foreground">@DiscordWebhookMasking.Mask(context.Url)</code>
+            </BbDataGridTemplateColumn>
+            <BbDataGridTemplateColumn TData="DiscordWebhook" Title="Events" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
+                @if (context.Events.Length == 0)
+                {
+                    @* An enabled webhook with no events never fires, which is not what anyone meant. *@
+                    <BbBadge Variant="@(context.Enabled ? BadgeVariant.SoftWarning : BadgeVariant.Outline)">No events</BbBadge>
+                }
+                else
+                {
+                    <div class="bb:flex bb:flex-wrap bb:gap-1">
+                        @foreach (var notificationEvent in context.Events)
+                        {
+                            <BbBadge Variant="BadgeVariant.Outline">@notificationEvent.ToEventName()</BbBadge>
+                        }
                     </div>
-                </BbDataGridTemplateColumn>
-            </Columns>
+                }
+            </BbDataGridTemplateColumn>
+            <BbDataGridPropertyColumn TData="DiscordWebhook" TProp="bool" Property="w => w.Enabled" Title="Status">
+                <CellTemplate>
+                    <StatusDot Active="context.Enabled" Label="@(context.Enabled ? "Enabled" : "Disabled")"/>
+                </CellTemplate>
+            </BbDataGridPropertyColumn>
+            <BbDataGridTemplateColumn TData="DiscordWebhook" Title="" Sortable="false" Width="0">
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
+            </BbDataGridTemplateColumn>
+        </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>@(_editingId is null ? "Add a webhook" : $"Edit {_name}")</BbDialogTitle>
             <BbDialogDescription>
@@ -73,33 +65,33 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="name">Name</BbLabel>
                 <BbInput Id="name" @bind-Value="_name" Placeholder="releases channel"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="url">URL</BbLabel>
                 <BbInput Id="url" @bind-Value="_url" Type="InputType.Password"
                          Placeholder="https://discord.com/api/webhooks/..."/>
                 @if (_editingId is not null)
                 {
-                    <p class="text-muted-foreground text-xs">Leave empty to keep the stored one.</p>
+                    <p class="bb:text-muted-foreground bb:text-xs">Leave empty to keep the stored one.</p>
                 }
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel>Events</BbLabel>
                 @foreach (var notificationEvent in Events)
                 {
                     var current = notificationEvent;
-                    <div class="flex items-center gap-2">
+                    <div class="bb:flex bb:items-center bb:gap-2">
                         <BbCheckbox Id="@($"event-{current}")" Checked="_events.Contains(current)"
                                     CheckedChanged="@(checkedNow => ToggleEvent(current, checkedNow))"/>
                         <BbLabel For="@($"event-{current}")">@current.ToEventName()</BbLabel>
                     </div>
                 }
             </div>
-            <div class="flex items-center gap-2">
+            <div class="bb:flex bb:items-center bb:gap-2">
                 <BbSwitch Id="enabled" @bind-Checked="_enabled"/>
                 <BbLabel For="enabled">Enabled</BbLabel>
             </div>

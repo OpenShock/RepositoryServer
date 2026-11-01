@@ -27,6 +27,7 @@ public sealed class ReleaseAdminService
     /// </summary>
     public Task<FirmwareRelease[]> ListEditableAsync(CancellationToken ct = default) =>
         _db.FirmwareReleases
+            .Include(r => r.RepositoryNavigation)
             .Where(r => r.Status == ReleaseStatus.Editing || r.Status == ReleaseStatus.Staging)
             .OrderByDescending(r => r.CreatedAt)
             .ToArrayAsync(ct);
@@ -90,6 +91,7 @@ public sealed class ReleaseAdminService
 
     public Task<FirmwareVersion[]> ListVersionsAsync(CancellationToken ct = default) =>
         _db.FirmwareVersions
+            .Include(v => v.RepositoryNavigation)
             .OrderByDescending(v => v.ReleaseDate)
             .ThenByDescending(v => v.Version)
             .ToArrayAsync(ct);

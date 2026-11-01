@@ -4,25 +4,24 @@
 @inherits AdminDataPageBase
 
 <PageHeader Title="USB devices">
-    <Subtitle>
-        Recognition catalog. A VID and PID pair identifies a USB interface, either a chip's native USB or a
-        board's serial converter. Saving an existing pair renames it rather than adding a second row.
-    </Subtitle>
+    <Subtitle>VID and PID pairs the flashtool uses to recognise a chip's native USB or a board's serial converter.</Subtitle>
     <Actions>
-        <BbButton OnClick="OpenCreate">Add device</BbButton>
+        <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add device</BbButton>
+        <RefreshButton Busy="Loading" OnClick="ReloadAsync"/>
     </Actions>
 </PageHeader>
 
-<BbCard Class="w-full overflow-hidden p-0">
-    <BbDataGrid TData="UsbDevice" Items="_devices" IsLoading="Loading" Striped="true" StickyHeader="true"
+<TableFrame Failed="LoadFailed" OnRetry="ReloadAsync">
+    <BbDataGrid TData="UsbDevice" TableContainerClass="@TableFrame.TableClass" Items="_devices" IsLoading="Loading" StickyHeader="true"
                 ShowSearch="true" SearchPlaceholder="Search devices">
         <EmptyTemplate>
-            <div class="flex flex-col items-center gap-3 py-12 text-center">
-                <p class="text-muted-foreground">No USB devices yet.</p>
-                <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreate">Add the first device</BbButton>
-            </div>
+            <EmptyState Icon="IconName.Usb" Title="No USB devices"
+                        Description="Without these the flashtool cannot recognise a connected board.">
+                <BbButton OnClick="OpenCreate"><Glyph Name="IconName.Plus"/>Add the first device</BbButton>
+            </EmptyState>
         </EmptyTemplate>
         <Columns>
+            <BbDataGridPropertyColumn TData="UsbDevice" TProp="string" Property="d => d.Name" Title="Name"/>
             <BbDataGridPropertyColumn TData="UsbDevice" TProp="int" Property="d => d.Vid" Title="VID">
                 <CellTemplate>
                     <code>@UsbIdentifier.Format(context.Vid)</code>
@@ -33,23 +32,18 @@
                     <code>@UsbIdentifier.Format(context.Pid)</code>
                 </CellTemplate>
             </BbDataGridPropertyColumn>
-            <BbDataGridPropertyColumn TData="UsbDevice" TProp="string" Property="d => d.Name" Title="Name"/>
             <BbDataGridTemplateColumn TData="UsbDevice" Title="" Sortable="false" Width="0">
-                <div class="flex justify-end gap-1">
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" OnClick="() => OpenEdit(context)" AriaLabel="Edit" title="Edit">
-                        <Glyph Name="IconName.Pencil"/>
-                    </BbButton>
-                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall" Class="text-destructive" OnClick="() => DeleteAsync(context)" AriaLabel="Delete" title="Delete">
-                        <Glyph Name="IconName.Trash"/>
-                    </BbButton>
-                </div>
+                <RowActions>
+                    <RowAction Label="Edit" Icon="IconName.Pencil" OnClick="() => OpenEdit(context)"/>
+                    <RowAction Label="Delete" Icon="IconName.Trash" Destructive="true" OnClick="() => DeleteAsync(context)"/>
+                </RowActions>
             </BbDataGridTemplateColumn>
         </Columns>
     </BbDataGrid>
-</BbCard>
+</TableFrame>
 
 <BbDialog @bind-Open="_formOpen">
-    <BbDialogContent Class="sm:max-w-md">
+    <BbDialogContent Class="bb:sm:max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>@(_editing ? $"Edit {_name}" : "Add a USB device")</BbDialogTitle>
             <BbDialogDescription>
@@ -57,16 +51,16 @@
             </BbDialogDescription>
         </BbDialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-            <div class="flex flex-col gap-2">
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="vid">VID</BbLabel>
                 <BbInput Id="vid" @bind-Value="_vid" Placeholder="0x1A86"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="pid">PID</BbLabel>
                 <BbInput Id="pid" @bind-Value="_pid" Placeholder="0x7522"/>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="name">Name</BbLabel>
                 <BbInput Id="name" @bind-Value="_name" Placeholder="CH9102"/>
             </div>

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+
 namespace OpenShock.RepositoryServer.Components;
 
 /// <summary>
@@ -12,11 +14,19 @@ namespace OpenShock.RepositoryServer.Components;
 /// </remarks>
 public abstract class AdminDataPageBase : AdminPageBase
 {
+    [Inject] private ILogger<AdminDataPageBase> Logger { get; set; } = null!;
+
     /// <summary>
     /// Whether a read is in flight. Bind the grid's <c>IsLoading</c> to this rather than tracking a
     /// flag per page.
     /// </summary>
     protected bool Loading { get; private set; } = true;
+
+    /// <summary>
+    /// Whether the last read failed. Pass it to <c>TableFrame</c>, so that a failed read is not drawn
+    /// as a table with no rows in it.
+    /// </summary>
+    protected bool LoadFailed { get; private set; }
 
     /// <summary>
     /// Reads everything the page shows, into the page's own fields. The scope is opened and disposed
@@ -31,11 +41,19 @@ public abstract class AdminDataPageBase : AdminPageBase
     protected async Task ReloadAsync()
     {
         Loading = true;
+        LoadFailed = false;
 
         try
         {
             await using var scope = CreateScope();
             await LoadDataAsync(scope);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // An exception escaping a lifecycle method tears down the whole circuit, which turns a
+            // database blip into a dead page. Stay up and offer the retry instead.
+            Logger.LogError(ex, "Failed to load an admin page");
+            LoadFailed = true;
         }
         finally
         {

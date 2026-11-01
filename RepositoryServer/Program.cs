@@ -295,6 +295,7 @@ builder.Services.AddSingleton<IDiscordNotificationService, DiscordNotificationSe
 // <---- Admin services ---->
 // All administration goes through these. The management UI is their only caller today; a
 // token-authenticated automation API would sit on top of the same services rather than beside them.
+builder.Services.AddScoped<AdminOverviewService>();
 builder.Services.AddScoped<CatalogAdminService>();
 builder.Services.AddScoped<PublisherAdminService>();
 builder.Services.AddScoped<AdvisoryAdminService>();
@@ -397,7 +398,7 @@ app.UseWebSockets(new WebSocketOptions
 });
 app.UseRouting();
 
-// Serves blazor.web.js and MudBlazor's bundled css/js out of the packages' static web assets.
+// Serves blazor.web.js and Blazor Blueprint's bundled css/js out of the packages' static web assets.
 // Deliberately the middleware rather than MapStaticAssets(): the endpoint-routing variant needs the
 // build-time asset manifest, which resolves against the content root, and under
 // WebApplicationFactory that is the test project. It came up empty there and swallowed every
