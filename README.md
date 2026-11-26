@@ -50,18 +50,17 @@ through `appsettings.Custom.json`, user secrets or command line arguments.
 | `OPENSHOCK__GITHUB__TEAM`             | x        |                                      | Team **slug** whose members are admins, e.g. `repo-maintainers`                                            |
 | `OPENSHOCK__GITHUB__CALLBACKPATH`     |          | `/auth/callback`                     | Must match the callback URL registered on the OAuth app                                                    |
 | `OPENSHOCK__GITHUB__SESSIONLIFETIME`  |          | `08:00:00`                           | How long an admin session lasts before a fresh login                                                       |
-| `OPENSHOCK__GITHUB__DATAPROTECTIONKEYPATH` |     |                                      | Shared path for cookie encryption keys, required for more than one replica                                 |
 | `OPENSHOCK__CICD__AUDIENCE`           | x        | `openshock-repository-server`        | Audience that publishing workflows request their OIDC token for                                            |
 | `OPENSHOCK__FIRMWARE__CDNBASEURL`     | x        | `https://cdn.openshock.app/firmware` | Public base URL firmware artifacts are served from                                                         |
 | `OPENSHOCK__FIRMWARE__STORAGE__TYPE`  | x        | `Local`                              | `Local`, `S3`, `BunnyCdn`                                                                                  |
 | `OPENSHOCK__FIRMWARE__STAGEDRELEASETTL`  |       | `01:00:00`                           | How long a release may sit in `staging` before it is aborted                                               |
 | `OPENSHOCK__FIRMWARE__EDITINGRELEASETTL` |       | `7.00:00:00`                         | How long a release may sit in `editing` before it is aborted                                               |
 | `OPENSHOCK__FIRMWARE__VERIFYPUBLISHEDARTIFACTS` |  | `true`                          | Check each artifact is retrievable at `CDNBASEURL` before publishing, and refuse to publish if not          |
-| `OPENSHOCK__REPO__ID`                 | x        |                                      | `openshock-desktop-modules`                                                                                |
-| `OPENSHOCK__REPO__NAME`               | x        |                                      | `OpenShock Modules`                                                                                        |
-| `OPENSHOCK__REPO__AUTHOR`             | x        |                                      | `OpenShock`                                                                                                |
-| `OPENSHOCK__REPO__HOMEPAGE`           |          |                                      | `https://openshock.org`                                                                                    |
-| `OPENSHOCK__REPO__CDNBASEURL`         | x        |                                      | Public base URL desktop module zips are served from                                                        |
+| `OPENSHOCK__MODULES__ID`              | x        |                                      | `openshock-desktop-modules`                                                                                |
+| `OPENSHOCK__MODULES__NAME`            | x        |                                      | `OpenShock Modules`                                                                                        |
+| `OPENSHOCK__MODULES__AUTHOR`          | x        |                                      | `OpenShock`                                                                                                |
+| `OPENSHOCK__MODULES__HOMEPAGE`        |          |                                      | `https://openshock.org`                                                                                    |
+| `OPENSHOCK__MODULES__CDNBASEURL`      | x        |                                      | Public base URL desktop module zips are served from                                                        |
 | `OPENSHOCK__METRICS__ALLOWEDNETWORKS` |          | private networks                     | CIDRs allowed to scrape `/metrics`                                                                         |
 
 Refer to the [Npgsql Connection String](https://www.npgsql.org/doc/connection-string-parameters.html)

@@ -331,6 +331,9 @@ builder.Services.AddPooledDbContextFactory<RepoServerContext>(dbBuilder =>
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IDbContextFactory<RepoServerContext>>().CreateDbContext());
 
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database");
+
 
 
 var app = builder.Build();
@@ -412,6 +415,9 @@ app.UseOpenTelemetryPrometheusScrapingEndpoint(context =>
 // Required by the Razor Components endpoints. Cookie-authenticated state changes need it, and
 // MapRazorComponents refuses to serve without the middleware present.
 app.UseAntiforgery();
+
+// Kubernetes startup/liveness probe. Anonymous, and not part of the OpenAPI document.
+app.MapHealthChecks("/1/health").AllowAnonymous();
 
 app.MapOpenApi(OpenApiSetup.DocumentPath);
 app.MapControllers();
