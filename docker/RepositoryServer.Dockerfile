@@ -11,7 +11,7 @@ COPY --link RepositoryServer/. RepositoryServer/
 RUN dotnet publish -c Release RepositoryServer/RepositoryServer.csproj -o /app
 
 # final is the final runtime stage for running the app
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.100-alpine3.24 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-alpine3.24 AS final
 WORKDIR /app
 
 COPY --link --from=build /app .
