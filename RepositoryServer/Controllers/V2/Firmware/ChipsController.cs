@@ -1,7 +1,7 @@
-using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenShock.Internal.Common;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Models.Firmware;
 using OpenShock.RepositoryServer.RepoServerDb;
 using OpenShock.RepositoryServer.Utils;
@@ -9,7 +9,10 @@ using System.Net.Mime;
 
 namespace OpenShock.RepositoryServer.Controllers.V2.Firmware;
 
-[ApiVersion("2.0")]
+/// <summary>
+/// Chips the supported boards are built on.
+/// </summary>
+[ApiVersion(2)]
 [ApiController]
 [Route("/{version:apiVersion}/firmware/chips")]
 [Consumes(MediaTypeNames.Application.Json)]

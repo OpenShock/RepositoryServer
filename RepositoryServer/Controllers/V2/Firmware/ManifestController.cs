@@ -1,7 +1,7 @@
-using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenShock.Internal.Common;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Enums;
 using OpenShock.RepositoryServer.Models.Firmware;
 using OpenShock.RepositoryServer.RepoServerDb;
@@ -10,7 +10,10 @@ using System.Net.Mime;
 
 namespace OpenShock.RepositoryServer.Controllers.V2.Firmware;
 
-[ApiVersion("2.0")]
+/// <summary>
+/// The whole firmware catalog in one response, for flashing tools that want everything up front.
+/// </summary>
+[ApiVersion(2)]
 [ApiController]
 [Route("/{version:apiVersion}/firmware/manifest")]
 [Consumes(MediaTypeNames.Application.Json)]

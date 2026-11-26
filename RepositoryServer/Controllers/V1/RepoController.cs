@@ -1,9 +1,9 @@
 ﻿using System.Collections.Immutable;
-using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Module = OpenShock.RepositoryServer.Models.Module;
 using OpenShock.Internal.Common;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Config;
 using OpenShock.RepositoryServer.Models;
 using OpenShock.RepositoryServer.RepoServerDb;
@@ -14,9 +14,12 @@ using Version = OpenShock.RepositoryServer.Models.Version;
 
 namespace OpenShock.RepositoryServer.Controllers.V1;
 
-[ApiVersion("1.0")]
+/// <summary>
+/// Desktop module repository: the index the OpenShock Desktop app installs modules from.
+/// </summary>
+[ApiVersion(1)]
 [ApiController]
-[Route("/{version:apiVersion}/")]
+[Route("/{version:apiVersion}")]
 [Consumes(MediaTypeNames.Application.Json)]
 public sealed class RepoController : OpenShockControllerBase
 {

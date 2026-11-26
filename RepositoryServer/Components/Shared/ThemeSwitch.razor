@@ -19,5 +19,15 @@
 </BbDropdownMenu>
 
 @code {
-    private async Task SetAsync(string scheme) => await JS.InvokeVoidAsync("setColorScheme", scheme);
+    private async Task SetAsync(string scheme)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("setColorScheme", scheme);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit closed between the click and the call; the page is gone with it.
+        }
+    }
 }

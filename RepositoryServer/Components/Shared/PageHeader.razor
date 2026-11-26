@@ -44,6 +44,13 @@
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await JS.InvokeVoidAsync("setDocumentTitle", $"{Title} · Repository Server");
+        try
+        {
+            await JS.InvokeVoidAsync("setDocumentTitle", $"{Title} · Repository Server");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit closed while rendering, so there is no tab left to retitle.
+        }
     }
 }

@@ -1,8 +1,8 @@
-using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenShock.Internal.Common;
 using OpenShock.Internal.Common.Problems;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Config;
 using OpenShock.RepositoryServer.Enums;
 using OpenShock.RepositoryServer.Models.Firmware;
@@ -13,7 +13,10 @@ using System.Net.Mime;
 
 namespace OpenShock.RepositoryServer.Controllers.V2.Firmware;
 
-[ApiVersion("2.0")]
+/// <summary>
+/// The newest firmware release on a release channel, overall or for one board.
+/// </summary>
+[ApiVersion(2)]
 [ApiController]
 [Route("/{version:apiVersion}/firmware/latest")]
 [Consumes(MediaTypeNames.Application.Json)]

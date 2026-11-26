@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FlexLabs.EntityFrameworkCore.Upsert;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +6,7 @@ using Npgsql;
 using OneOf;
 using OpenShock.Internal.Common;
 using OpenShock.Internal.Common.Problems;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Config;
 using OpenShock.RepositoryServer.Enums;
 using OpenShock.RepositoryServer.Models.Firmware;
@@ -23,7 +23,7 @@ using OpenShock.RepositoryServer.RepoServerDb.Models;
 
 namespace OpenShock.RepositoryServer.Controllers.V2.Firmware;
 
-[ApiVersion("2.0")]
+[ApiVersion(2)]
 [ApiController]
 [Route("/{version:apiVersion}/firmware/releases")]
 [Consumes(MediaTypeNames.Application.Json)]

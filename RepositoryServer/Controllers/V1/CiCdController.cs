@@ -1,9 +1,9 @@
-using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenShock.Internal.Common;
 using OpenShock.Internal.Common.Problems;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.Config;
 using OpenShock.RepositoryServer.Errors;
 using OpenShock.RepositoryServer.RepoServerDb;
@@ -17,7 +17,7 @@ using Version = OpenShock.RepositoryServer.RepoServerDb.Models.Version;
 
 namespace OpenShock.RepositoryServer.Controllers.V1;
 
-[ApiVersion("1.0")]
+[ApiVersion(1)]
 [ApiController]
 [Route("/{version:apiVersion}/cicd")]
 [Consumes(MediaTypeNames.Application.Json)]

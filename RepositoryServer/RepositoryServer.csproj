@@ -5,8 +5,6 @@
     <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
-    <PackageReference Include="Asp.Versioning.OpenApi" />
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="EntityFrameworkCore.Exceptions.PostgreSQL" />
     <PackageReference Include="FlexLabs.EntityFrameworkCore.Upsert" />

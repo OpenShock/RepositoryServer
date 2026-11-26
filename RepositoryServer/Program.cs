@@ -1,5 +1,4 @@
 using System.Net;
-using Asp.Versioning;
 using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,10 +11,12 @@ using BlazorBlueprint.Components;
 using OpenShock.Internal.Common.ExceptionHandling;
 using OpenShock.Internal.Common.Utils;
 using OpenShock.RepositoryServer;
+using OpenShock.RepositoryServer.ApiVersioning;
 using OpenShock.RepositoryServer.AuthenticationHandlers;
 using OpenShock.RepositoryServer.Components;
 using OpenShock.RepositoryServer.Config;
 using OpenShock.RepositoryServer.Enums;
+using OpenShock.RepositoryServer.OpenApi;
 using OpenShock.RepositoryServer.RepoServerDb;
 using OpenShock.RepositoryServer.Services;
 using OpenShock.RepositoryServer.Services.Admin;
@@ -173,27 +174,14 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddBlazorBlueprintComponents();
 
-builder.Services.AddControllers().AddJsonOptions(x => JsonOptions.ConfigureDefault(x.JsonSerializerOptions));
-
+// Routes carry their version as a plain leading segment (/1, /2/firmware/...), filled in by the convention from each
+// controller's [ApiVersion]. There is a single OpenAPI document holding every version.
 builder.Services
-    .AddApiVersioning(options =>
-    {
-        options.DefaultApiVersion = new ApiVersion(1, 0);
-        options.AssumeDefaultVersionWhenUnspecified = true;
-    })
-    // Controller-based APIs need the MVC integration to be versioned at all; without it the
-    // [ApiVersion] attributes are inert and every action lands in the default version.
-    .AddMvc()
-    .AddApiExplorer(setup =>
-    {
-        setup.GroupNameFormat = "VVV";
-        setup.SubstituteApiVersionInUrl = true;
-        setup.DefaultApiVersion = new ApiVersion(1, 0);
-        setup.AssumeDefaultVersionWhenUnspecified = true;
-    })
-    // Registers one OpenAPI document per discovered API version, rather than the single hand-named
-    // document this used to declare, which described v1 and left every v2 endpoint undocumented.
-    .AddOpenApi();
+    .AddControllers(options => options.Conventions.Add(new ApiVersionRouteConvention()))
+    .AddJsonOptions(x => JsonOptions.ConfigureDefault(x.JsonSerializerOptions));
+
+// XML documentation comments are applied by a source generator that intercepts this call, so it has to stay here
+builder.Services.AddOpenApi(OpenApiSetup.DocumentName, OpenApiSetup.Configure);
 
 // The OAuth redirect_uri is built from the incoming request, so behind an ingress that terminates
 // TLS the server would otherwise send GitHub an http:// callback that does not match the one
@@ -425,15 +413,12 @@ app.UseOpenTelemetryPrometheusScrapingEndpoint(context =>
 // MapRazorComponents refuses to serve without the middleware present.
 app.UseAntiforgery();
 
-app.MapOpenApi().WithDocumentPerVersion();
+app.MapOpenApi(OpenApiSetup.DocumentPath);
 app.MapControllers();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
-// One entry per API version, matching the documents WithDocumentPerVersion serves.
-app.MapScalarApiReference(options =>
-{
-    options.AddDocument("1");
-    options.AddDocument("2");
-});
+app.MapScalarApiReference(options => options
+    .WithOpenApiRoutePattern(OpenApiSetup.DocumentPath)
+    .AddDocument(OpenApiSetup.DocumentName, "OpenShock Repository Server"));
 
 app.Run();

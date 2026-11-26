@@ -29,9 +29,10 @@ secrets.
 
 ### API Documentation
 
-The Scalar API reference is served at `/scalar` on any running instance. It is generated from the
-controllers, one document per API version, and covers response shapes, caching rules and the problem
-details returned on error.
+The Scalar API reference is served at `/scalar` on any running instance, and the OpenAPI document it
+reads at `/openapi.json`. It is generated from the controllers as a single document holding every API
+version (`/1`, `/2/...`), and covers response shapes, caching rules and the problem details returned on
+error.
 
 # Configuration
 
@@ -324,6 +325,7 @@ stack, which uses 5432.
 | `http://localhost:5080/admin` | Admin UI |
 | `http://localhost:5080/auth/me` | Current session, useful for checking the bypass took |
 | `http://localhost:5080/scalar` | API reference |
+| `http://localhost:5080/openapi.json` | OpenAPI document |
 
 ## Login bypass
 
