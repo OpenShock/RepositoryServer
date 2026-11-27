@@ -7,6 +7,17 @@ on:
       - '**'
     types: [ opened, reopened, synchronize ]
   workflow_call:
+    inputs:
+      latest:
+        description: 'Tag image as latest'
+        required: false
+        type: boolean
+        default: false
+      push:
+        description: 'Push image to registry (makes it push if it usually wouldnt)'
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
 
 name: ci-build
@@ -40,71 +51,74 @@ jobs:
           set -euo pipefail
           dotnet test -c Release --project ${{ matrix.project }}
 
+  # Each image builds on a runner matching its own architecture (no QEMU) and pushes an untagged
+  # image by digest. `merge` then stitches each image's digests into one tagged manifest.
   build:
-    name: Build (${{ matrix.image }})
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.image.name }} / ${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.runner }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - dockerfile: docker/RepositoryServer.Dockerfile
-            image: repository-server
+        image:
+          - name: repository-server
+            dockerfile: docker/RepositoryServer.Dockerfile
+        platform:
+          - name: linux/amd64
+            runner: ubuntu-latest
+    env:
+      PUSH_IMAGE: ${{ inputs.push || (github.ref_protected && github.event_name != 'pull_request') }}
+    outputs:
+      push-image: ${{ env.PUSH_IMAGE }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build ${{ matrix.image }}
+      - name: Build ${{ matrix.image.name }}
         uses: ./.github/actions/build-app
         with:
-          dockerfile: ${{ matrix.dockerfile }}
-          push: ${{ inputs.push || (github.ref_protected && github.event_name != 'pull_request') }}
-          image: ${{ matrix.image }}
-          platforms: ${{ inputs.platforms || 'linux/amd64' }}
-          tag-prefix: ${{ inputs.tag-prefix  || 'rn' }}
-          
-  promote-image:
-    name: Promote Image (${{ matrix.image }})
+          dockerfile: ${{ matrix.image.dockerfile }}
+          image: ${{ matrix.image.name }}
+          platform: ${{ matrix.platform.name }}
+          push: ${{ env.PUSH_IMAGE }}
+          registry: ${{ env.REGISTRY }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # Not a matrix: matrix jobs can't expose a per-entry output, and deploys need this image's digest.
+  merge:
+    name: Merge (repository-server)
     needs: [build, tests]
     runs-on: ubuntu-latest
-    if: ${{ inputs.push || (github.ref_protected && github.event_name != 'pull_request') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - image: repository-server
-    
+    if: needs.build.outputs.push-image == 'true'
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.merge.outputs.digest }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
+      - name: Merge repository-server
+        id: merge
+        uses: ./.github/actions/merge-image
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Promote Manifest ${{ matrix.image }}
-        uses: ./.github/actions/promote-image
-        with:
-          image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
-          run-tag: ${{ inputs.tag-prefix  || 'rn' }}-${{ github.run_number }}-a${{ github.run_attempt }}
+          image: repository-server
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
           latest: ${{ inputs.latest || false }}
-          
+
+  # Deploys pin the manifest digest rather than a tag: no per-build tags are created, and
+  # re-running this job alone sends the same digest.
   deploy-prod-workflow:
     runs-on: ubuntu-latest
-    needs: promote-image
+    needs: merge
     if: ${{ github.ref_type == 'branch' && github.event_name != 'pull_request' && github.ref_name == 'master' }}
     environment: production
     steps:
@@ -114,12 +128,12 @@ jobs:
           repo: openshock/kubernetes-cluster-gitops
           event-type: update-repository-server-prod
           client-payload: |
-            {"tag": "${{ inputs.tag-prefix  || 'rn' }}-${{ github.run_number }}-a${{ github.run_attempt }}"}
+            {"digest": "${{ needs.merge.outputs.digest }}"}
           token: ${{ secrets.GITOPS_PAT }}
 
   deploy-dev:
     runs-on: ubuntu-latest
-    needs: promote-image
+    needs: merge
     if: ${{ github.ref_type == 'branch' && github.event_name != 'pull_request' && github.ref_name == 'develop' }}
     environment: development
 

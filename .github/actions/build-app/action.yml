@@ -1,46 +1,94 @@
 name: build-app
-description: Build and Push Docker Image
+description: Builds one image for a single platform and pushes it by digest. Tags are applied later, to the merged manifest, by `merge-image`.
 inputs:
   dockerfile:
     required: true
     description: Dockerfile path
-  push:
-    required: true
-    description: Push image to registry
   image:
     required: true
-    description: Image name
-  platforms:
+    description: Image name (e.g. `repository-server`)
+  platform:
     required: true
-    description: Image platforms
-  tag-prefix:
+    description: Target platform (e.g. `linux/amd64`). Should match the runner's native architecture so no QEMU emulation is needed.
+  push:
     required: true
-    description: Tag prefix (e.g. 'rn' for 'rn-123-a1')
+    description: If true, pushes the untagged per-platform image and uploads its digest as an artifact
+  registry:
+    required: true
+    description: Container registry to push the image to
+  registry-username:
+    required: true
+    description: Username to log in to the container registry
+  registry-password:
+    required: true
+    description: Password to log in to the container registry
 
 runs:
   using: composite
-  
+
   steps:
-    - name: Extract metadata (tags, labels) for Docker
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.registry-username }}
+        password: ${{ inputs.registry-password }}
+
+    # Image references must be lowercase, but the owner is `OpenShock`.
+    - name: Resolve image name
+      id: image
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.registry }}/${{ github.repository_owner }}/${{ inputs.image }}
+      run: echo "name=${IMAGE,,}" >> "$GITHUB_OUTPUT"
+
+    # Only labels are used here; tags go on the multi-arch manifest in `merge-image`.
+    - name: Extract metadata (labels) for Docker
       id: meta
       uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
       with:
-        images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ inputs.image }}
-        flavor: |
-          latest=false
-        tags: |
-          type=raw,value=${{ inputs.tag-prefix }}-${{ github.run_number }}-a${{ github.run_attempt }}
+        images: ${{ steps.image.outputs.name }}
 
-    - name: Build and push
-      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+    - name: Build and push Docker image by digest
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         context: .
         file: ${{ inputs.dockerfile }}
-        push: ${{ inputs.push }}
-        tags: ${{ steps.meta.outputs.tags }}
+        platforms: ${{ inputs.platform }}
         labels: ${{ steps.meta.outputs.labels }}
-        platforms: ${{ inputs.platforms }}
+        outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+        # Scoped per image *and* platform: several build jobs can share this cache, and an unscoped
+        # `type=gha` gives them all one scope, where each one evicts the others' layers.
         cache-from: |
-          type=gha
+          type=gha,scope=${{ inputs.image }}-${{ inputs.platform }}
         cache-to: |
-          type=gha
+          type=gha,mode=max,scope=${{ inputs.image }}-${{ inputs.platform }}
+
+    # The merge job needs to know which digests belong to this image, so the image name is part of
+    # the artifact name and not just the platform.
+    - name: Export digest
+      id: digest
+      if: inputs.push == 'true'
+      shell: bash
+      env:
+        DIGEST: ${{ steps.build.outputs.digest }}
+        IMAGE: ${{ inputs.image }}
+        PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/digests"
+        touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+        echo "artifact-name=digests-${IMAGE}-${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload digest
+      if: inputs.push == 'true'
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ steps.digest.outputs.artifact-name }}
+        path: ${{ runner.temp }}/digests/*
+        if-no-files-found: error
+        retention-days: 1
