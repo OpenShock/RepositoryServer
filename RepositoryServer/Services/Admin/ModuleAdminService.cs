@@ -102,9 +102,13 @@ public sealed class ModuleAdminService
     /// changelog link, or entering a version whose zip is already hosted somewhere the server never
     /// uploaded to. It writes only the row that advertises the zip — no bytes are moved — so the
     /// digest is the admin's to get right, and it is validated here rather than trusted.
+    /// <para>
+    /// A null <c>zipUrl</c> means the zip is in module storage at <see cref="Utils.ModuleZip.StoragePath"/>,
+    /// with its URL built from <c>Modules:CdnBaseUrl</c> when served.
+    /// </para>
     /// </remarks>
     public async Task<OneOf<Version, ReferenceNotFound, InvalidVersion, InvalidHash>> UpsertVersionAsync(
-        string moduleId, string versionName, Uri zipUrl, byte[] hashSha256, Uri? changelogUrl,
+        string moduleId, string versionName, Uri? zipUrl, byte[] hashSha256, Uri? changelogUrl,
         Uri? releaseUrl, CancellationToken ct = default)
     {
         var normalizedModule = moduleId.ToLowerInvariant();

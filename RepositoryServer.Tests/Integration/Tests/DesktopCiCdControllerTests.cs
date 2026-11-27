@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenShock.RepositoryServer.Enums;
@@ -40,12 +41,12 @@ public class DesktopCiCdControllerTests
         await Assert.That(Factory.StoredModuleFileExists($"{ModuleId}/1.0.0/module.zip")).IsTrue();
         await Assert.That(Factory.StoredFileExists($"{ModuleId}/1.0.0/module.zip")).IsFalse();
 
-        var zipUrl = await Factory.UseDbAsync(db => db.Versions
-            .Where(v => v.Module == ModuleId && v.VersionName == "1.0.0")
-            .Select(v => v.ZipUrl)
-            .SingleAsync());
-        await Assert.That(zipUrl.ToString())
-            .IsEqualTo($"https://cdn-test.openshock.example/repo/{ModuleId}/1.0.0/module.zip");
+        // The index builds the URL from Modules:CdnBaseUrl
+        using var anonymous = Factory.CreateClient();
+        using var index = JsonDocument.Parse(await anonymous.GetStringAsync("/1"));
+        var url = index.RootElement.GetProperty("modules").GetProperty(ModuleId)
+            .GetProperty("versions").GetProperty("1.0.0").GetProperty("url").GetString();
+        await Assert.That(url).IsEqualTo($"https://cdn-test.openshock.example/repo/{ModuleId}/1.0.0/module.zip");
     }
 
     [Test]

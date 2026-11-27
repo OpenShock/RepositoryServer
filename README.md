@@ -83,6 +83,12 @@ Files are written at the root of their storage, so each `CDNBASEURL` must point 
 - firmware: `{version}/{board}/{artifact}.bin` under `OPENSHOCK__FIRMWARE__CDNBASEURL`
 - modules: `{moduleId}/{version}/module.zip` under `OPENSHOCK__MODULES__CDNBASEURL`
 
+A module version uploaded through the server stores no URL: it is built from
+`OPENSHOCK__MODULES__CDNBASEURL` each time the index is served, so changing the CDN only needs a
+config change. A version registered with an explicit URL, such as one hosted before the server
+stored modules itself, keeps that URL. Clearing it in the admin UI switches the version to the
+built URL, once its zip has been moved into module storage at the path above.
+
 The tables below use the firmware prefix. For module storage, replace `FIRMWARE` with `MODULES`.
 
 ### Local
@@ -233,6 +239,41 @@ PlatformIO env name a hub compiles in as `OPENSHOCK_FW_BOARD`. Board UUIDs are s
 |----------------------------------------------|-------|---------------------------------------------|
 | `GET /1/`                                    | none  | Repository index with every module version  |
 | `PUT /1/cicd/modules/{id}/versions/{version}` | OIDC | Upload a module zip                         |
+
+A module zip may hold only `.dll`, `.pdb` and `.json` files at its root, plus `wwwroot/` for static
+assets and `libs/` for dependencies. It is stored at `{moduleId}/{version}/module.zip` in module
+storage, and published versions are immutable.
+
+Versions are published either by an admin uploading the zip on the module's page, or by the
+module's CI. For CI, register the module's repository as a publisher with `publish_modules`, assign
+the module to it, and add a workflow that runs when a release is published:
+
+```yaml
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir dist
+      - run: |
+          token=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=openshock-repository-server" | jq -r .value)
+          curl --fail-with-body -X PUT -H "Authorization: Bearer $token" \
+            -F "zip=@$(find dist -name '*.zip')" \
+            "https://repo.openshock.org/1/cicd/modules/<module-id>/versions/${TAG#v}"
+```
+
+The OpenShock module repositories carry a fuller version of this as `publish-module.yml`.
 
 ## Release workflow
 

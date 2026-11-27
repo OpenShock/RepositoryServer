@@ -2,6 +2,9 @@
 @attribute [Authorize(Policy = AuthSchemas.Policies.Admin)]
 @using System.Diagnostics.CodeAnalysis
 @using OpenShock.RepositoryServer.RepoServerDb.Models
+@using OpenShock.RepositoryServer.Services
+@using OpenShock.RepositoryServer.Utils
+@using OpenShock.RepositoryServer.Config
 @inherits AdminDataPageBase
 
 <PageHeader Title="@(_module?.Name ?? ModuleId)">
@@ -9,7 +12,8 @@
     <Actions>
         @if (_module is not null)
         {
-            <BbButton OnClick="OpenCreateVersion"><Glyph Name="IconName.Plus"/>Add version</BbButton>
+            <BbButton OnClick="OpenUpload"><Glyph Name="IconName.Upload"/>Upload version</BbButton>
+            <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreateVersion"><Glyph Name="IconName.ExternalLink"/>Register by URL</BbButton>
             <BbButton Variant="ButtonVariant.Outline" OnClick="OpenEditModule"><Glyph Name="IconName.Pencil"/>Edit module</BbButton>
         }
     </Actions>
@@ -87,8 +91,8 @@ else
         <div>
             <h2 id="versions-heading" class="bb:text-lg bb:font-semibold">Published versions</h2>
             <p class="bb:text-muted-foreground bb:text-sm">
-                Newest first by semantic version. Normally written by the module's CI; what is here is the
-                manual override. Withdrawing one removes it from the index but keeps the zip in storage.
+                Newest first by semantic version. Normally published by the module's CI; upload a zip here
+                to publish one by hand. Withdrawing one removes it from the index but keeps the zip in storage.
             </p>
         </div>
 
@@ -98,7 +102,7 @@ else
                 <EmptyTemplate>
                     <EmptyState Compact="true" Icon="IconName.Package" Title="Nothing published"
                                 Description="The module's CI publishes here once it is wired up.">
-                        <BbButton Variant="ButtonVariant.Outline" OnClick="OpenCreateVersion">Register a version by hand</BbButton>
+                        <BbButton Variant="ButtonVariant.Outline" OnClick="OpenUpload">Upload a version</BbButton>
                     </EmptyState>
                 </EmptyTemplate>
                 <Columns>
@@ -120,8 +124,15 @@ else
                         </CellTemplate>
                     </BbDataGridPropertyColumn>
                     <BbDataGridTemplateColumn TData="VersionRow" Title="Zip" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
-                        <a href="@context.ZipUrl" class="bb:underline" target="_blank" rel="noreferrer"
-                           title="@context.ZipUrl">@Shorten(context.ZipUrl)</a>
+                        <div class="bb:flex bb:flex-wrap bb:items-center bb:gap-2">
+                            <a href="@context.ZipUrl" class="bb:underline" target="_blank" rel="noreferrer"
+                               title="@context.ZipUrl">@Shorten(context.ZipUrl)</a>
+                            @if (!context.Hosted)
+                            {
+                                @* A fixed URL does not follow Modules:CdnBaseUrl. *@
+                                <BbBadge Variant="BadgeVariant.Secondary">External</BbBadge>
+                            }
+                        </div>
                     </BbDataGridTemplateColumn>
                     <BbDataGridTemplateColumn TData="VersionRow" Title="SHA-256" Sortable="false" HeaderClass="bb:hidden md:table-cell" CellClass="bb:hidden md:table-cell">
                         <span class="bb:text-muted-foreground bb:font-mono bb:text-xs" title="@context.Hash">@(context.Hash[..12])&hellip;</span>
@@ -164,16 +175,68 @@ else
 <ModuleFormDialog @bind-Open="_moduleFormOpen" Model="_moduleForm" Repositories="_repositories"
                   IdLocked="true" OnSave="SaveModuleAsync"/>
 
+<BbDialog @bind-Open="_uploadOpen">
+    <BbDialogContent Class="sm:max-w-lg">
+        <BbDialogHeader>
+            <BbDialogTitle>Upload a version</BbDialogTitle>
+            <BbDialogDescription>
+                Publishes the zip exactly as the module's CI would: the archive is checked, hashed and
+                written to module storage, and the version is added to the index. Published versions
+                are immutable, so an existing version cannot be uploaded again.
+            </BbDialogDescription>
+        </BbDialogHeader>
+
+        <div class="bb:flex bb:flex-col bb:gap-4 bb:py-2">
+            <div class="bb:flex bb:flex-col bb:gap-2">
+                <BbLabel For="upload-version">Version</BbLabel>
+                <BbInput Id="upload-version" @bind-Value="_upload.Name" Disabled="_uploading" Placeholder="1.4.0"/>
+            </div>
+            <div class="bb:flex bb:flex-col bb:gap-2">
+                <BbLabel For="upload-zip">Module zip</BbLabel>
+                <InputFile id="upload-zip" OnChange="SelectZip" accept=".zip" disabled="@_uploading"
+                           class="bb:border-input bb:w-full bb:cursor-pointer bb:rounded-md bb:border bb:text-sm bb:file:border-0"/>
+                <p class="bb:text-muted-foreground bb:text-xs">
+                    Only .dll, .pdb and .json files at the root, plus optional wwwroot and libs folders. Up to
+                    @(ModulePublishService.MaxZipSize / 1024 / 1024) MB.
+                </p>
+            </div>
+            <div class="bb:flex bb:flex-col bb:gap-2">
+                <BbLabel For="upload-changelog">Changelog URL</BbLabel>
+                <BbInput Id="upload-changelog" @bind-Value="_upload.ChangelogUrl" Disabled="_uploading"/>
+            </div>
+            <div class="bb:flex bb:flex-col bb:gap-2">
+                <BbLabel For="upload-release">Release URL</BbLabel>
+                <BbInput Id="upload-release" @bind-Value="_upload.ReleaseUrl" Disabled="_uploading"/>
+            </div>
+        </div>
+
+        <BbDialogFooter>
+            <BbButton Variant="ButtonVariant.Outline" Disabled="_uploading" OnClick="() => _uploadOpen = false">Cancel</BbButton>
+            <BbButton OnClick="UploadVersionAsync" Disabled="_uploading">
+                @if (_uploading)
+                {
+                    <BbSpinner Size="SpinnerSize.Small"/>
+                    <span>Uploading&hellip;</span>
+                }
+                else
+                {
+                    <span>Upload</span>
+                }
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <BbDialog @bind-Open="_versionFormOpen">
     <BbDialogContent Class="sm:max-w-lg">
         <BbDialogHeader>
             <BbDialogTitle>
-                @(_editingVersion ? $"Edit {_versionForm.Name}" : "Register a version")
+                @(_editingVersion ? $"Edit {_versionForm.Name}" : "Register a version by URL")
             </BbDialogTitle>
             <BbDialogDescription>
                 This writes only the row that advertises the zip — no bytes are uploaded or moved, and
-                nothing verifies the digest against the file, so it has to be the digest of the zip at
-                that URL or every install of this version fails.
+                nothing verifies the digest against the file, so it has to be the digest of the zip it
+                points at or every install of this version fails.
             </BbDialogDescription>
         </BbDialogHeader>
 
@@ -190,7 +253,12 @@ else
             <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-zip">Zip URL</BbLabel>
                 <BbInput Id="version-zip" @bind-Value="_versionForm.ZipUrl"
-                         Placeholder="https://cdn.example.com/modules/id/1.4.0/module.zip"/>
+                         Placeholder="@HostedUrl(_versionForm.Name)"/>
+                <p class="bb:text-muted-foreground bb:text-xs">
+                    Leave empty when the zip is in module storage at
+                    <code>@ModuleZip.StoragePath(ModuleId.ToLowerInvariant(), VersionOrPlaceholder(_versionForm.Name))</code>;
+                    its URL then follows the configured CDN. Set it only for a zip hosted elsewhere.
+                </p>
             </div>
             <div class="bb:flex bb:flex-col bb:gap-2">
                 <BbLabel For="version-hash">SHA-256</BbLabel>
@@ -216,6 +284,7 @@ else
 
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = null!;
+    [Inject] private ApiConfig ApiConfig { get; set; } = null!;
 
     /// <summary>The module's id, from the route. Ids are lowercased by the service.</summary>
     [Parameter, EditorRequired] public required string ModuleId { get; set; }
@@ -234,6 +303,10 @@ else
     private bool _moduleFormOpen;
     private ModuleFormModel _moduleForm = new();
 
+    private bool _uploadOpen;
+    private bool _uploading;
+    private UploadFormModel _upload = new();
+
     private bool _versionFormOpen;
     private bool _editingVersion;
     private VersionFormModel _versionForm = new();
@@ -246,7 +319,7 @@ else
 
         _versions = _module is null
             ? []
-            : ModuleVersions.NewestFirst(_module.Versions).Select(VersionRow.From).ToArray();
+            : ModuleVersions.NewestFirst(_module.Versions).Select(v => VersionRow.From(v, ApiConfig.Modules)).ToArray();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -260,6 +333,13 @@ else
         var repository = _repositories.FirstOrDefault(r => r.Id == id);
         return repository is null ? null : $"{repository.Owner}/{repository.Repo}";
     }
+
+    private static string VersionOrPlaceholder(string? version) =>
+        string.IsNullOrWhiteSpace(version) ? "{version}" : version.Trim().ToLowerInvariant();
+
+    /// <summary>The URL a version gets when its zip is in module storage.</summary>
+    private string HostedUrl(string? version) =>
+        $"{ApiConfig.Modules.CdnBaseUrl.TrimEnd('/')}/{ModuleZip.StoragePath(ModuleId.ToLowerInvariant(), VersionOrPlaceholder(version))}";
 
     /// <summary>Keeps a URL to one line in a cell; the full value stays in the title attribute.</summary>
     private static string Shorten(string url) => url.Length <= 56 ? url : $"{url[..53]}…";
@@ -323,6 +403,64 @@ else
         // This page is now about something that does not exist, so it cannot be what the admin is
         // left looking at.
         if (deleted) Navigation.NavigateTo("/admin/desktop/modules");
+    }
+
+    private void OpenUpload()
+    {
+        _upload = new UploadFormModel();
+        _uploadOpen = true;
+    }
+
+    private void SelectZip(InputFileChangeEventArgs e) => _upload.File = e.File;
+
+    private async Task UploadVersionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_upload.Name))
+        {
+            ReportError("A version is required.");
+            return;
+        }
+
+        if (_upload.File is not { } file)
+        {
+            ReportError("Choose the module zip to upload.");
+            return;
+        }
+
+        if (file.Size > ModulePublishService.MaxZipSize)
+        {
+            ReportError($"The zip is larger than {ModulePublishService.MaxZipSize / 1024 / 1024} MB.");
+            return;
+        }
+
+        if (!FormValues.TryParseUri(_upload.ChangelogUrl, out var changelogUrl) ||
+            !FormValues.TryParseUri(_upload.ReleaseUrl, out var releaseUrl))
+        {
+            ReportError("Changelog and release must be absolute URLs, or left empty.");
+            return;
+        }
+
+        var name = _upload.Name.Trim();
+        _uploading = true;
+
+        try
+        {
+            await MutateAsync(async scope =>
+            {
+                await using var zip = file.OpenReadStream(ModulePublishService.MaxZipSize);
+                var result = await scope.Get<ModulePublishService>().PublishAsync(
+                    ModuleId, name, zip, changelogUrl, releaseUrl);
+
+                Report(result.Match<string?>(_ => null, problem => problem.Title), $"Published {name}.");
+
+                // Kept open on a refusal, so a wrong version or zip can be fixed without starting over.
+                if (result.IsT0) _uploadOpen = false;
+            });
+        }
+        finally
+        {
+            _uploading = false;
+        }
     }
 
     private void OpenCreateVersion()
@@ -389,19 +527,24 @@ else
     /// <summary>
     /// One row of the versions grid. A projection rather than the entity: the grid and the form both
     /// want the digest as hex and the URLs as strings, and the entity's type name collides with
-    /// <see cref="System.Version"/> in a Razor file.
+    /// <see cref="System.Version"/> in a Razor file. <c>ZipUrl</c> is what clients download from,
+    /// built when the zip is in module storage; <c>StoredZipUrl</c> is what the row holds, null in
+    /// that case.
     /// </summary>
     private sealed record VersionRow(
-        string Name, string ZipUrl, string Hash, string? ChangelogUrl, string? ReleaseUrl,
-        bool Parseable, bool IsPrerelease)
+        string Name, string ZipUrl, string? StoredZipUrl, string Hash, string? ChangelogUrl,
+        string? ReleaseUrl, bool Parseable, bool IsPrerelease)
     {
-        public static VersionRow From(RepoServerDb.Models.Version version)
+        public bool Hosted => StoredZipUrl is null;
+
+        public static VersionRow From(RepoServerDb.Models.Version version, ModulesConfig config)
         {
             var parsed = ModuleVersions.Parse(version.VersionName);
 
             return new VersionRow(
                 version.VersionName,
-                version.ZipUrl.ToString(),
+                ModuleZip.Url(config, version).ToString(),
+                version.ZipUrl?.ToString(),
                 FormValues.ToHex(version.HashSha256),
                 version.ChangelogUrl?.ToString(),
                 version.ReleaseUrl?.ToString(),
@@ -410,8 +553,17 @@ else
         }
     }
 
+    /// <summary>What the upload dialog binds to.</summary>
+    private sealed class UploadFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public IBrowserFile? File { get; set; }
+        public string? ChangelogUrl { get; set; }
+        public string? ReleaseUrl { get; set; }
+    }
+
     private sealed record VersionFormValues(
-        string Name, Uri ZipUrl, byte[] Hash, Uri? ChangelogUrl, Uri? ReleaseUrl);
+        string Name, Uri? ZipUrl, byte[] Hash, Uri? ChangelogUrl, Uri? ReleaseUrl);
 
     /// <summary>What the version dialog binds to. Everything is text until it is saved.</summary>
     private sealed class VersionFormModel
@@ -425,7 +577,9 @@ else
         public static VersionFormModel From(VersionRow row) => new()
         {
             Name = row.Name,
-            ZipUrl = row.ZipUrl,
+            // Only a URL actually stored on the row: a hosted version's URL is built, and saving it
+            // back would freeze it against a later change of CDN.
+            ZipUrl = row.StoredZipUrl,
             Hash = row.Hash,
             ChangelogUrl = row.ChangelogUrl,
             ReleaseUrl = row.ReleaseUrl
@@ -447,9 +601,9 @@ else
                 return false;
             }
 
-            if (!FormValues.TryParseUri(ZipUrl, out var zipUrl) || zipUrl is null)
+            if (!FormValues.TryParseUri(ZipUrl, out var zipUrl))
             {
-                error = "The zip URL is required, and must be absolute.";
+                error = "The zip URL must be absolute, or left empty for module storage.";
                 return false;
             }
 

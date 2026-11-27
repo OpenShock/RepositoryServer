@@ -266,6 +266,7 @@ builder.Services.AddScoped<AdvisoryAdminService>();
 builder.Services.AddScoped<DiscordWebhookAdminService>();
 builder.Services.AddScoped<ReleaseAdminService>();
 builder.Services.AddScoped<ModuleAdminService>();
+builder.Services.AddScoped<ModulePublishService>();
 
 // Composes the services above rather than writing itself, so a bulk import is held to the same
 // invariants as the equivalent clicking.

@@ -51,7 +51,7 @@ public sealed class RepoController : OpenShockControllerBase
             Versions = x.Versions.ToImmutableDictionary(
                 y => SemVersion.Parse(y.VersionName, SemVersionStyles.Strict, 64), y => new Version
                 {
-                    Url = y.ZipUrl,
+                    Url = ModuleZip.Url(_apiConfig.Modules, y),
                     Sha256Hash = y.HashSha256,
                     ChangelogUrl = y.ChangelogUrl,
                     ReleaseUrl = y.ReleaseUrl
