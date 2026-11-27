@@ -61,6 +61,7 @@ through `appsettings.Custom.json`, user secrets or command line arguments.
 | `OPENSHOCK__MODULES__AUTHOR`          | x        |                                      | `OpenShock`                                                                                                |
 | `OPENSHOCK__MODULES__HOMEPAGE`        |          |                                      | `https://openshock.org`                                                                                    |
 | `OPENSHOCK__MODULES__CDNBASEURL`      | x        |                                      | Public base URL desktop module zips are served from                                                        |
+| `OPENSHOCK__MODULES__STORAGE__TYPE`   | x        |                                      | `Local`, `S3`, `BunnyCdn`                                                                                  |
 | `OPENSHOCK__METRICS__ALLOWEDNETWORKS` |          | private networks                     | CIDRs allowed to scrape `/metrics`                                                                         |
 
 Refer to the [Npgsql Connection String](https://www.npgsql.org/doc/connection-string-parameters.html)
@@ -71,10 +72,18 @@ fields are printed and the process exits with code `-10`.
 
 ## Storage
 
-Firmware artifacts and module zips are written to one of three backends, selected with
-`OPENSHOCK__FIRMWARE__STORAGE__TYPE`. The server only ever writes. Serving the files is the job of
-whatever CDN sits in front of the storage, and clients use the absolute URLs returned by the API
-instead of building paths themselves.
+Firmware artifacts and module zips each have their own storage, configured separately under
+`OPENSHOCK__FIRMWARE__STORAGE__*` and `OPENSHOCK__MODULES__STORAGE__*`. Both pick one of three
+backends with `TYPE`, and they may use different ones. The server only ever writes. Serving the
+files is the job of whatever CDN sits in front of the storage, and clients use the absolute URLs
+returned by the API instead of building paths themselves.
+
+Files are written at the root of their storage, so each `CDNBASEURL` must point at that root:
+
+- firmware: `{version}/{board}/{artifact}.bin` under `OPENSHOCK__FIRMWARE__CDNBASEURL`
+- modules: `{moduleId}/{version}/module.zip` under `OPENSHOCK__MODULES__CDNBASEURL`
+
+The tables below use the firmware prefix. For module storage, replace `FIRMWARE` with `MODULES`.
 
 ### Local
 
@@ -86,7 +95,8 @@ Writes to disk. Intended for development.
 
 ### S3
 
-Works with AWS S3 and any S3-compatible service such as Cloudflare R2 or MinIO.
+Works with AWS S3 and any S3-compatible service such as Cloudflare R2 or MinIO. For R2, set
+`SERVICEURL` to `https://<account-id>.r2.cloudflarestorage.com` and `REGION` to `auto`.
 
 | Variable                                          | Required | Default value | Allowed / Example value              |
 |---------------------------------------------------|----------|---------------|--------------------------------------|

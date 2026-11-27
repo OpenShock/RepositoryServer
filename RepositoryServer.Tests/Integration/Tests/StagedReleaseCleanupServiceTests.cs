@@ -99,7 +99,7 @@ public class StagedReleaseCleanupServiceTests
 
         var service = new StagedReleaseCleanupService(
             sp.GetRequiredService<IDbContextFactory<RepoServerContext>>(),
-            sp.GetRequiredService<IStorageService>(),
+            sp.GetRequiredKeyedService<IStorageService>(StorageKeys.Firmware),
             sp.GetRequiredService<ApiConfig>(),
             sp.GetRequiredService<IDiscordNotificationService>(),
             timeProvider,

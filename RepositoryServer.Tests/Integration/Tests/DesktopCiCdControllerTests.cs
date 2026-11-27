@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenShock.RepositoryServer.Enums;
 using OpenShock.RepositoryServer.RepoServerDb;
@@ -34,6 +35,17 @@ public class DesktopCiCdControllerTests
         var response = await PublishAsync(client, "1.0.0");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+        // Module zips go to the module storage, at its root, and are advertised under Modules:CdnBaseUrl
+        await Assert.That(Factory.StoredModuleFileExists($"{ModuleId}/1.0.0/module.zip")).IsTrue();
+        await Assert.That(Factory.StoredFileExists($"{ModuleId}/1.0.0/module.zip")).IsFalse();
+
+        var zipUrl = await Factory.UseDbAsync(db => db.Versions
+            .Where(v => v.Module == ModuleId && v.VersionName == "1.0.0")
+            .Select(v => v.ZipUrl)
+            .SingleAsync());
+        await Assert.That(zipUrl.ToString())
+            .IsEqualTo($"https://cdn-test.openshock.example/repo/{ModuleId}/1.0.0/module.zip");
     }
 
     [Test]

@@ -246,33 +246,9 @@ builder.Services.AddOpenTelemetry()
         .AddPrometheusExporter());
 
 // <---- Storage Service ---->
-switch (config.Firmware.Storage.Type)
-{
-    case StorageType.BunnyCdn:
-        var bunnyCdnConfig = config.Firmware.Storage.BunnyCdn
-                             ?? throw new InvalidOperationException("BunnyCdn storage config is required when Type is BunnyCdn.");
-        builder.Services.AddSingleton(bunnyCdnConfig);
-        builder.Services.AddHttpClient<BunnyCdnStorageService>();
-        builder.Services.AddSingleton<IStorageService>(sp => sp.GetRequiredService<BunnyCdnStorageService>());
-        break;
-
-    case StorageType.Local:
-        var localConfig = config.Firmware.Storage.Local
-                          ?? throw new InvalidOperationException("Local storage config is required when Type is Local.");
-        builder.Services.AddSingleton(localConfig);
-        builder.Services.AddSingleton<IStorageService, LocalStorageService>();
-        break;
-
-    case StorageType.S3:
-        var s3Config = config.Firmware.Storage.S3
-                       ?? throw new InvalidOperationException("S3 storage config is required when Type is S3.");
-        builder.Services.AddSingleton(s3Config);
-        builder.Services.AddSingleton<IStorageService, S3StorageService>();
-        break;
-
-    default:
-        throw new InvalidOperationException($"Unknown storage type: {config.Firmware.Storage.Type}");
-}
+// Firmware and modules are stored separately, each served by its own CDN host.
+builder.Services.AddKeyedStorage(StorageKeys.Firmware, config.Firmware.Storage);
+builder.Services.AddKeyedStorage(StorageKeys.Modules, config.Modules.Storage);
 
 // <---- Discord notifications ---->
 // Notifications outlive the request that triggers them, so the service is a singleton that resolves

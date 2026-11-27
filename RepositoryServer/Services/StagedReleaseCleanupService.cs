@@ -24,7 +24,7 @@ public sealed class StagedReleaseCleanupService : BackgroundService
 
     public StagedReleaseCleanupService(
         IDbContextFactory<RepoServerContext> dbFactory,
-        IStorageService storage,
+        [FromKeyedServices(StorageKeys.Firmware)] IStorageService storage,
         ApiConfig apiConfig,
         IDiscordNotificationService discord,
         TimeProvider timeProvider,

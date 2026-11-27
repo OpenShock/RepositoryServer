@@ -51,7 +51,8 @@ public class PublishedArtifactVerifierTests
                 Modules = new ModulesConfig
                 {
                     Id = "test", Name = "test", Author = "test",
-                    CdnBaseUrl = "https://cdn.example/repo"
+                    CdnBaseUrl = "https://cdn.example/repo",
+                    Storage = new StorageConfig { Type = StorageType.Local }
                 },
                 Firmware = new FirmwareConfig
                 {

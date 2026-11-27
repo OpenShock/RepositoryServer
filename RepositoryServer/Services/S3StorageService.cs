@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using OpenShock.RepositoryServer.Config;
@@ -10,17 +11,27 @@ public sealed class S3StorageService : IStorageService, IDisposable
     private readonly IAmazonS3 _s3Client;
     private readonly string _bucketName;
     private readonly string? _keyPrefix;
+    private readonly bool _disablePayloadSigning;
 
     public S3StorageService(S3StorageConfig config)
     {
         _bucketName = config.BucketName;
         _keyPrefix = config.KeyPrefix?.TrimEnd('/');
 
-        var s3Config = new AmazonS3Config();
+        var s3Config = new AmazonS3Config
+        {
+            // Only send and verify checksums where the S3 API requires them. The SDK otherwise adds
+            // trailing CRC checksums to every request, which S3-compatible services such as
+            // Cloudflare R2 do not all accept.
+            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
+        };
 
         if (config.ServiceUrl != null)
         {
             s3Config.ServiceURL = config.ServiceUrl;
+            // Unsigned payloads are only permitted over TLS, so plain-HTTP endpoints (local MinIO) keep signing.
+            _disablePayloadSigning = config.ServiceUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         }
 
         if (config.Region != null)
@@ -40,6 +51,10 @@ public sealed class S3StorageService : IStorageService, IDisposable
             Key = ResolveKey(path),
             InputStream = content,
             ContentType = "application/octet-stream",
+            // S3-compatible endpoints (Cloudflare R2 among them) do not support streaming SigV4
+            // uploads, which is what the SDK uses by default.
+            DisablePayloadSigning = _disablePayloadSigning,
+            DisableDefaultChecksumValidation = _disablePayloadSigning,
         };
 
         await _s3Client.PutObjectAsync(request, cancellationToken);

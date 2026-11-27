@@ -31,7 +31,10 @@ public class CiCdController : OpenShockControllerBase
     private readonly IStorageService _storage;
     private readonly ApiConfig _apiConfig;
 
-    public CiCdController(RepoServerContext db, IStorageService storage, ApiConfig apiConfig)
+    public CiCdController(
+        RepoServerContext db,
+        [FromKeyedServices(StorageKeys.Modules)] IStorageService storage,
+        ApiConfig apiConfig)
     {
         _db = db;
         _storage = storage;
@@ -149,7 +152,7 @@ public class CiCdController : OpenShockControllerBase
         var hashBytes = SHA256.HashData(fileBytes);
 
         // Upload to storage
-        var storagePath = $"modules/{moduleId}/{moduleVersion}/module.zip";
+        var storagePath = $"{moduleId}/{moduleVersion}/module.zip";
         using var uploadStream = new MemoryStream(fileBytes);
         await _storage.UploadFileAsync(storagePath, uploadStream);
 

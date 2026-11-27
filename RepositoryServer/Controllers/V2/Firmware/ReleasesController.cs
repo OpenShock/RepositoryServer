@@ -51,7 +51,7 @@ public class ReleasesController : OpenShockControllerBase
 
     public ReleasesController(
         RepoServerContext db,
-        IStorageService storage,
+        [FromKeyedServices(StorageKeys.Firmware)] IStorageService storage,
         ApiConfig apiConfig,
         IDiscordNotificationService discord,
         TimeProvider timeProvider,

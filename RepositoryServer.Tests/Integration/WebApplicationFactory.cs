@@ -32,6 +32,9 @@ public sealed class WebApplicationFactory
     private readonly string _cdnStoragePath = Path.Combine(
         Path.GetTempPath(), $"repo-server-tests-cdn-{Guid.NewGuid():N}");
 
+    private readonly string _moduleStoragePath = Path.Combine(
+        Path.GetTempPath(), $"repo-server-tests-modules-{Guid.NewGuid():N}");
+
     public async Task InitializeAsync()
     {
         // Schema first, host second. Npgsql reads PostgreSQL's type catalogue once, on the first
@@ -139,6 +142,13 @@ public sealed class WebApplicationFactory
         File.Exists(Path.Combine(_cdnStoragePath, relativePath.Replace('/', Path.DirectorySeparatorChar)));
 
     /// <summary>
+    /// True when a path exists in the module storage backing this factory, which is separate from the
+    /// firmware storage <see cref="StoredFileExists"/> reads.
+    /// </summary>
+    public bool StoredModuleFileExists(string relativePath) =>
+        File.Exists(Path.Combine(_moduleStoragePath, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+    /// <summary>
     /// Wipes all mutable test data between tests without tearing down the container.
     /// Firmware tables first (FK order), then repositories, then catalog.
     /// </summary>
@@ -199,6 +209,8 @@ public sealed class WebApplicationFactory
             ["Modules:Name"] = "OpenShock Modules (test)",
             ["Modules:Author"] = "OpenShockTests",
             ["Modules:CdnBaseUrl"] = "https://cdn-test.openshock.example/repo",
+            ["Modules:Storage:Type"] = "Local",
+            ["Modules:Storage:Local:BasePath"] = _moduleStoragePath,
 
             ["Firmware:CdnBaseUrl"] = "https://cdn-test.openshock.example/firmware",
             ["Firmware:Storage:Type"] = "Local",
@@ -259,9 +271,12 @@ public sealed class WebApplicationFactory
         {
             try
             {
-                if (Directory.Exists(_cdnStoragePath))
+                foreach (var path in new[] { _cdnStoragePath, _moduleStoragePath })
                 {
-                    Directory.Delete(_cdnStoragePath, recursive: true);
+                    if (Directory.Exists(path))
+                    {
+                        Directory.Delete(path, recursive: true);
+                    }
                 }
             }
             catch
